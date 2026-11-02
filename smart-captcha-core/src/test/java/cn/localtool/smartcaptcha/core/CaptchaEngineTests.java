@@ -114,13 +114,10 @@ class CaptchaEngineTests {
     @Test
     void clickShouldUseChineseByDefault() {
         CaptchaChallenge challenge = engine.generate("click", null, null);
-        // 默认中文；极少数无中文字体的环境会自动降级为英文
-        String expected = ImageSupport.supportsCjk() ? "zh" : "en";
-        assertEquals(expected, challenge.click().charset());
-        if ("zh".equals(expected)) {
-            assertTrue(challenge.click().words().stream().allMatch(w -> w.codePointAt(0) >= 0x4E00));
-            assertTrue(challenge.tip().startsWith("请依次点击"));
-        }
+        // 默认中文，不做环境校验、不降级
+        assertEquals("zh", challenge.click().charset());
+        assertTrue(challenge.click().words().stream().allMatch(w -> w.codePointAt(0) >= 0x4E00));
+        assertTrue(challenge.tip().startsWith("请依次点击"));
     }
 
     @Test
@@ -142,7 +139,7 @@ class CaptchaEngineTests {
     @Test
     void clickCharsetShouldFallBackToDefaultWhenUnknown() {
         CaptchaChallenge challenge = engine.generate("click", null, "klingon");
-        assertEquals(ImageSupport.supportsCjk() ? "zh" : "en", challenge.click().charset());
+        assertEquals("zh", challenge.click().charset());
     }
 
     @Test

@@ -87,7 +87,7 @@ mvn clean install
 # 启动服务模块 → http://localhost:8088（依赖上面的 install，core/starter 从本地仓库解析）
 mvn -pl smart-captcha-server spring-boot:run
 #   或者直接跑 fat jar
-java -jar smart-captcha-server/target/smart-captcha-server-1.5.0.jar
+java -jar smart-captcha-server/target/smart-captcha-server-1.8.0.jar
 
 # 前端 → http://localhost:5173（vite 已代理 /api 到 127.0.0.1:8088）
 cd vue3
@@ -158,7 +158,7 @@ mvn clean install
 <dependency>
     <groupId>cn.localtool</groupId>
     <artifactId>smart-captcha-spring-boot-starter</artifactId>
-    <version>1.5.0</version>
+    <version>1.8.0</version>
 </dependency>
 ```
 
@@ -523,14 +523,13 @@ public class MySliderGenerator implements CaptchaGenerator {
 - `smart-captcha.click.charset`：`zh`（中文，**默认**）或 `en`（大写 A–Z，已排除 I/O/Q 等易混字形）。
 - 单次覆盖：生成请求体里的 `"clickCharset": "en"`（GET 版用 `?clickCharset=en`），适合中英双语站点。
 - 实际使用的字符集在 `data.click.charset` 返回，前端提示语随之切换（`请依次点击` / `Click in order`）。
-- 服务端没有中文字体时，`zh` 会自动降级为 `en` 并打一条警告。
 
-**自定义字体。** 默认由生成器自动挑选：`zh` 选环境里可用的中文字体，`en` 用 SansSerif。可以三种方式覆盖：
+**自定义字体。** 默认用 `SansSerif` 逻辑字体（JVM 自动映射平台字体）。可以三种方式覆盖：
 
 ```yaml
 smart-captcha:
   click:
-    font-family: "阿里巴巴普惠体"                # 字体族名；系统未安装时打警告并回退默认字体
+    font-family: "阿里巴巴普惠体"                # 字体族名，设置即用（不校验是否已安装）
     # 或指定字体文件（ttf / otf）：绝对/相对路径（~ 自动展开）或 classpath 资源
     # font-path: classpath:fonts/行楷.ttf        # 例如 /data/fonts/行楷.ttf
 ```
@@ -542,7 +541,7 @@ Font myFont = Font.createFont(Font.TRUETYPE_FONT, Path.of("/fonts/行楷.ttf"))
 config.getClick().setFont(myFont);
 ```
 
-优先级：`click.font`（Font 对象）→ `click.font-path`（字体文件）→ `click.font-family`（字体族名）→ 自动挑选。字体文件只读一次并缓存（文件按「绝对路径 + 最后修改时间」为键）；实际绘制字号始终跟随 `click.font-size`（Font 对象保留传入样式，字体文件按加粗绘制）；字符集为 `zh` 而自定义字体渲染不了汉字时，回退默认中文字体并打警告。文件缺失或损坏不会让验证码失败——只警告并降级。
+不做任何字体校验、也不推荐字体：设置了外部字体就直接使用——优先级 `click.font`（Font 对象）→ `click.font-path`（字体文件）→ `click.font-family`（字体族名）→ 都没设置才用 `SansSerif`。字体文件只读一次并缓存（文件按「绝对路径 + 最后修改时间」为键）；实际绘制字号始终跟随 `click.font-size`（Font 对象保留传入样式，字体文件按加粗绘制）。唯一的回退是字体文件本身加载失败（不存在或损坏）——警告并降级为默认字体，不会让验证码失败。
 
 ---
 
@@ -595,11 +594,11 @@ mvn -pl smart-captcha-core test   # 只跑内核，完全不起 Spring 容器
 
 | 模块 | 用例数 | 覆盖内容 |
 | --- | --- | --- |
-| core | 51 | 三种方式的通过/失败、次数锁定、ticket 一次性、点选字符集（zh / en）、自定义点选字体（Font 对象 / 字体文件路径与 classpath / 字体族 / 回退，14 例）、`auto` 随机池、`min-duration-ms`、自定义生成器覆盖、内存存储契约（8 例）、背景图来源：目录 / 多文件 / 远程 URL / classpath 通配 / 重载 / 概率 / 失败降级（13 例） |
+| core | 54 | 三种方式的通过/失败、次数锁定、ticket 一次性、点选字符集（zh / en）、中文池 2000 常用字、自定义点选字体（Font 对象 / 字体文件路径与 classpath / 字体族，设置即用不校验，14 例）、`auto` 随机池、`min-duration-ms`、自定义生成器覆盖、内存存储契约（8 例）、背景图来源：目录 / 多文件 / 远程 URL / classpath 通配 / 重载 / 概率 / 失败降级（13 例） |
 | starter | 47 | 自动装配（默认内存、未知类型回退）、存储类型归一化、`smart-captcha.background.*` + `click.font-family` / `click.font-path` 绑定与引擎装配（6 例）、同一套 `CaptchaStore` 契约在 **redis** 与 **redisson** 上各 8 例、引擎跑在 Redis 上的完整链路（2 例）、拦截器改为抛 `CaptchaTicketException`（9 例）、无 advice 时仍返回 403（2 例）、拦截器开关：默认关闭 / 配置开启（6 例） |
 | server | 13 | REST 契约（config / generate / verify / 各种错误码）+ 4 个受保护业务接口的 MockMvc 用例（缺 ticket / 假 ticket / 重放 / 验证码接口本身不被拦）+ 2 个业务自校验用例 |
 
-合计 111 个用例。其中 18 个依赖 Redis 的用例在连不上 Redis 时**自动跳过**；换地址用 `-Dtest.redis.host=… -Dtest.redis.port=…`（或环境变量 `REDIS_HOST` / `REDIS_PORT`）。
+合计 114 个用例。其中 18 个依赖 Redis 的用例在连不上 Redis 时**自动跳过**；换地址用 `-Dtest.redis.host=… -Dtest.redis.port=…`（或环境变量 `REDIS_HOST` / `REDIS_PORT`）。
 
 ---
 
@@ -607,8 +606,8 @@ mvn -pl smart-captcha-core test   # 只跑内核，完全不起 Spring 容器
 
 | 现象 | 原因 | 处理 |
 | --- | --- | --- |
-| IDEA 报 `Unresolved dependency: 'cn.localtool:smart-captcha-parent:jar:1.5.0'` | IDE 读到的是扁平化之前安装的 POM，或 IDE 使用的本地仓库与命令行安装的仓库不是同一个 | 在仓库根目录重新 `mvn clean install`，然后 IDEA 里 *Reload All Maven Projects*；核对 *Settings → Build Tools → Maven → Local repository*，用 `mvn -Dmaven.repo.local=<该路径> install` 装到同一个仓库 |
-| 报 `Dependency 'cn.localtool:smart-captcha-spring-boot-starter:1.5.0' not found` | 从未安装，或装到了另一个本地仓库 | 同上；并确认没有只执行 `mvn install -pl smart-captcha-spring-boot-starter`（缺父 POM 时加 `-am`） |
+| IDEA 报 `Unresolved dependency: 'cn.localtool:smart-captcha-parent:jar:1.8.0'` | IDE 读到的是扁平化之前安装的 POM，或 IDE 使用的本地仓库与命令行安装的仓库不是同一个 | 在仓库根目录重新 `mvn clean install`，然后 IDEA 里 *Reload All Maven Projects*；核对 *Settings → Build Tools → Maven → Local repository*，用 `mvn -Dmaven.repo.local=<该路径> install` 装到同一个仓库 |
+| 报 `Dependency 'cn.localtool:smart-captcha-spring-boot-starter:1.8.0' not found` | 从未安装，或装到了另一个本地仓库 | 同上；并确认没有只执行 `mvn install -pl smart-captcha-spring-boot-starter`（缺父 POM 时加 `-am`） |
 | 启动报 `NoClassDefFoundError: …CaptchaInterceptor`，或 Redis 存储不生效 | web、Spring Data Redis、Redisson 在 starter 里是 **optional** 依赖 | 在业务项目里显式引入实际用到的那几个 |
 
 ---

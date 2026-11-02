@@ -48,8 +48,9 @@ smart-captcha:
     font-size: 30
     # 点选字符集：zh 中文（默认） / en 英文；单次请求可用 clickCharset 覆盖
     charset: zh
-    # 自定义字体族名（系统需已安装该字体，未安装时回退默认字体）；
-    # 或指定字体文件（ttf/otf）：绝对/相对路径（~ 自动展开）或 classpath: 资源，如 classpath:fonts/xx.ttf；
+    # 自定义字体（不做任何校验，设置即用；只有字体文件加载失败才回退默认字体）：
+    # font-family 填字体族名；font-path 填字体文件（ttf/otf）——
+    # 绝对/相对路径（~ 自动展开）或 classpath: 资源，如 classpath:fonts/xx.ttf；
     # 需要完全控制字体对象时，在代码里调 config.getClick().setFont(java.awt.Font)
     # font-path: classpath:fonts/xx.ttf
     font-family: ""

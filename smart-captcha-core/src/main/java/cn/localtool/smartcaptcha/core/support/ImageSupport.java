@@ -5,7 +5,6 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontFormatException;
 import java.awt.Graphics2D;
-import java.awt.GraphicsEnvironment;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.BufferedInputStream;
@@ -17,13 +16,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.URL;
-import java.util.Arrays;
 import java.util.Base64;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -32,16 +26,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ImageSupport {
 
     private static final String DATA_URL_PREFIX = "data:image/";
-
-    /** 优先使用的中文字体，按平台可用性依次回退。 */
-    private static final String[] FONT_CANDIDATES = {
-            "PingFang SC", "Hiragino Sans GB", "Heiti SC", "Microsoft YaHei",
-            "SimHei", "Noto Sans CJK SC", "Source Han Sans SC", "WenQuanYi Micro Hei",
-            "Droid Sans Fallback", Font.SANS_SERIF
-    };
-
-    /** 用于探测字体是否能渲染常用汉字。 */
-    private static final char PROBE_CHAR = '验';
 
     private ImageSupport() {
     }
@@ -115,68 +99,6 @@ public final class ImageSupport {
         g.drawImage(source, 0, 0, null);
         g.dispose();
         return copy;
-    }
-
-    private static volatile String resolvedCjkFont = null;
-    private static volatile boolean cjkChecked = false;
-
-    /** 当前环境是否能渲染中文。 */
-    public static synchronized boolean supportsCjk() {
-        if (!cjkChecked) {
-            resolvedCjkFont = detectCjkFont();
-            cjkChecked = true;
-        }
-        return resolvedCjkFont != null;
-    }
-
-    private static String detectCjkFont() {
-        Set<String> installed = new HashSet<>(Arrays.asList(
-                GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames()));
-        for (String name : FONT_CANDIDATES) {
-            Font font = new Font(name, Font.PLAIN, 24);
-            boolean familyInstalled = installed.contains(name) || Font.SANS_SERIF.equals(name);
-            if (familyInstalled && font.canDisplay(PROBE_CHAR)) {
-                return name;
-            }
-        }
-        // 兜底：任意可显示汉字的逻辑字体
-        Font logical = new Font(Font.SANS_SERIF, Font.PLAIN, 24);
-        return logical.canDisplay(PROBE_CHAR) ? Font.SANS_SERIF : null;
-    }
-
-    /** 取一个能渲染中文的字体，环境无中文字体时返回逻辑字体（调用方需降级为字母）。 */
-    public static Font cjkFont(int size, int style) {
-        supportsCjk();
-        String name = resolvedCjkFont != null ? resolvedCjkFont : Font.SANS_SERIF;
-        return new Font(name, style, size);
-    }
-
-    /** 字体是否能渲染常用汉字（用于自定义字体回退判断）。 */
-    public static boolean canDisplayCjk(Font font) {
-        return font != null && font.canDisplay(PROBE_CHAR);
-    }
-
-    /** 字体族在当前环境是否可用（兼容五个逻辑字体名与本地化名称）。 */
-    public static boolean familyAvailable(String family) {
-        if (family == null || family.isBlank()) {
-            return false;
-        }
-        String name = family.trim();
-        for (String logical : List.of(Font.DIALOG, Font.DIALOG_INPUT, Font.SANS_SERIF,
-                Font.SERIF, Font.MONOSPACED)) {
-            if (logical.equalsIgnoreCase(name)) {
-                return true;
-            }
-        }
-        GraphicsEnvironment env = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        for (Locale locale : List.of(Locale.getDefault(), Locale.ENGLISH)) {
-            for (String installed : env.getAvailableFontFamilyNames(locale)) {
-                if (installed.equalsIgnoreCase(name)) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     private static final Map<String, Font> FONT_FILE_CACHE = new ConcurrentHashMap<>();

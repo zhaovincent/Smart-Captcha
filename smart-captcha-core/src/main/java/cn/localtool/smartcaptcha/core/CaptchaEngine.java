@@ -248,7 +248,6 @@ public class CaptchaEngine {
         config.put("clickWordCount", this.config.getClick().getWordCount());
         config.put("clickCharset", this.config.getClick().getCharset());
         config.put("rotateSize", this.config.getRotate().getSize());
-        config.put("cjkSupported", ImageSupport.supportsCjk());
         config.put("store", store.type());
         config.put("background", backgrounds.describe());
         config.put("backgroundImages", backgrounds.externalImageCount());

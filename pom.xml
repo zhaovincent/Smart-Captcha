@@ -13,7 +13,7 @@
 
     <groupId>cn.localtool</groupId>
     <artifactId>smart-captcha-parent</artifactId>
-    <version>1.5.0</version>
+    <version>1.8.0</version>
     <packaging>pom</packaging>
 
     <name>SmartCaptcha</name>

@@ -192,21 +192,20 @@ public class CaptchaConfig {
 
         /**
          * 自定义字体对象（优先级最高，只能通过代码设置）。
-         * 字号按 {@link #fontSize} 派生，样式保留传入值；
-         * 字符集为中文但该字体渲染不了汉字时，回退到默认中文字体。
+         * 不做任何校验，设置即用：字号按 {@link #fontSize} 派生，样式保留传入值。
          */
         private transient Font font;
 
         /**
          * 字体文件路径（ttf / otf），支持绝对 / 相对路径（{@code ~} 自动展开）或
          * {@code classpath:} 资源，例如 {@code classpath:fonts/Xingkai.ttf}。
-         * 同一文件按内容缓存，只加载一次；加载失败回退默认字体并打警告。
+         * 同一文件按内容缓存，只加载一次；仅当文件本身加载失败时回退默认字体并打警告。
          */
         private String fontPath = "";
 
         /**
          * 自定义字体族名（可由 yaml 配置：{@code smart-captcha.click.font-family}）。
-         * 系统未安装该字体时回退到默认字体选择逻辑。
+         * 不校验是否安装，设置即用；未安装的族名由 JVM 自行映射。
          */
         private String fontFamily = "";
 
