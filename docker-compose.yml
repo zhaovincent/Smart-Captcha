@@ -1,0 +1,7 @@
+services:
+  redis:
+    image: redis/redis-stack-server:latest
+    container_name: smartcaptcha-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]

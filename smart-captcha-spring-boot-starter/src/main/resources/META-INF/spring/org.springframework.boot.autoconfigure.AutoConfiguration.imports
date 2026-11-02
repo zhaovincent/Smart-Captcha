@@ -1,0 +1,5 @@
+cn.localtool.smartcaptcha.spring.autoconfigure.RedisCaptchaStoreAutoConfiguration
+cn.localtool.smartcaptcha.spring.autoconfigure.RedissonCaptchaStoreAutoConfiguration
+cn.localtool.smartcaptcha.spring.autoconfigure.MemoryCaptchaStoreAutoConfiguration
+cn.localtool.smartcaptcha.spring.autoconfigure.SmartCaptchaAutoConfiguration
+cn.localtool.smartcaptcha.spring.autoconfigure.SmartCaptchaWebAutoConfiguration

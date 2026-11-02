@@ -1,0 +1,93 @@
+server:
+  port: 8088
+
+spring:
+  application:
+    name: SmartCaptcha
+  jackson:
+    default-property-inclusion: non_null
+
+smart-captcha:
+  enabled: true
+  # 验证码有效期（秒）
+  expire-seconds: 120
+  # 同一张验证码最多允许尝试次数
+  max-attempts: 3
+  # 验证通过后签发的 ticket 有效期（秒）
+  ticket-expire-seconds: 300
+  # 允许的验证方式，留空表示全部开启；前端可用 auto 随机
+  allow-types:
+    - slider
+    - click
+    - rotate
+  # 背景画布尺寸
+  width: 360
+  height: 200
+  # 最小作答耗时（毫秒），0 表示不校验；可拦截脚本瞬时提交
+  min-duration-ms: 0
+  # 跨域来源（仅 /api/**）
+  allowed-origins:
+    - "*"
+
+  # 业务接口拦截器：默认关闭（业务接口自己校验 ticket）
+  # 开启后，标了 @RequireCaptcha 的接口会在进入方法前校验并消费 ticket
+  interceptor:
+    enabled: true
+
+  slider:
+    # 拼图块边长
+    piece-size: 52
+    # 横向容错（原图像素）
+    tolerance: 8
+
+  click:
+    # 需要依次点击的字符数
+    word-count: 3
+    # 点击容错半径（原图像素）
+    tolerance: 22
+    font-size: 30
+    # 点选字符集：zh 中文（默认） / en 英文；单次请求可用 clickCharset 覆盖
+    charset: zh
+    # 自定义字体族名（系统需已安装该字体，未安装时回退默认字体）；
+    # 或指定字体文件（ttf/otf）：绝对/相对路径（~ 自动展开）或 classpath: 资源，如 classpath:fonts/xx.ttf；
+    # 需要完全控制字体对象时，在代码里调 config.getClick().setFont(java.awt.Font)
+    # font-path: classpath:fonts/xx.ttf
+    font-family: ""
+
+  rotate:
+    # 圆盘直径
+    size: 200
+    # 角度容错（度）
+    tolerance: 8
+
+  background:
+    # 背景图来源，可混合配置任意多条（留空 = 只用程序化生成的抽象背景）：
+    #   1. 目录：/data/captcha/bg、~/Pictures/bg  —— 递归扫描 png/jpg/jpeg/gif/bmp/webp
+    #   2. 单个本地文件：/data/captcha/bg/01.jpg
+    #   3. 远程图片：https://cdn.example.com/bg/02.jpg —— 启动后预取并缓存
+    #   4. classpath 资源：classpath:captcha-bg/*（** 表示递归，适合打进 jar）
+    locations: []
+    # 兼容旧配置：等价于往 locations 里加一条目录
+    dir: ""
+    # 使用外部图片的概率（0~100），剩余概率使用程序化背景
+    ratio: 50
+    # 远程图片连接 / 读取超时（毫秒）
+    connect-timeout-ms: 3000
+    read-timeout-ms: 5000
+    # 远程图片缓存有效期（秒），0 = 只在启动时取一次
+    refresh-seconds: 0
+
+  # 验证码会话 / ticket 存储
+  store:
+    # memory 内存（默认，单实例）；redis 用 RedisTemplate；redisson 用 Redisson 客户端
+    type: memory
+    # key 前缀，多套环境共用一个 Redis 库时用于隔离
+    key-prefix: smart-captcha
+    # 以下仅在 type=redisson 时生效（type=redis 走 Spring Boot 的 spring.data.redis.*）
+    address: redis://127.0.0.1:6379
+    password: ""
+    database: 0
+
+logging:
+  level:
+    cn.localtool.smartcaptcha: INFO

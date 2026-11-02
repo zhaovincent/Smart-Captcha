@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>cn.localtool</groupId>
+        <artifactId>smart-captcha-parent</artifactId>
+        <version>1.5.0</version>
+    </parent>
+
+    <artifactId>smart-captcha-core</artifactId>
+    <name>SmartCaptcha Core</name>
+    <description>Pure Java captcha engine (slider / click word / rotate): only JDK 17, no Spring, no third-party runtime dependency</description>
+
+    <properties>
+        <!-- 内核只用 JDK：javax.imageio / java.awt 属于 java.desktop 模块 -->
+        <maven.compiler.release>17</maven.compiler.release>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 安装时生成扁平化 POM（不引用父 POM），供外部项目直接依赖 -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+            </plugin>
+            <!-- 契约测试类以 test-jar 形式提供给 starter / server 复用 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

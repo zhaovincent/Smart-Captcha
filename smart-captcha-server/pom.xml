@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>cn.localtool</groupId>
+        <artifactId>smart-captcha-parent</artifactId>
+        <version>1.5.0</version>
+    </parent>
+
+    <artifactId>smart-captcha-server</artifactId>
+    <name>SmartCaptcha Server</name>
+    <description>Ready-to-run Spring Boot service exposing the captcha REST API (used by the Vue 3 demo page)</description>
+
+    <dependencies>
+        <!-- 引入 starter 即可获得 引擎 + 自动装配 + 拦截器 -->
+        <dependency>
+            <groupId>cn.localtool</groupId>
+            <artifactId>smart-captcha-spring-boot-starter</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- 服务默认用内存存储；这两个依赖让 redis / redisson 模式开箱可切 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+            <version>${redisson.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!-- 可选依赖在打 fat jar 时一并包含，运行时按配置决定是否启用 -->
+                    <includeOptional>true</includeOptional>
+                    <mainClass>cn.localtool.smartcaptcha.server.SmartCaptchaServerApplication</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
