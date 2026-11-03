@@ -69,11 +69,13 @@ smart-captcha:
     #   2. 单个本地文件：/data/captcha/bg/01.jpg
     #   3. 远程图片：https://cdn.example.com/bg/02.jpg —— 启动后预取并缓存
     #   4. classpath 资源：classpath:captcha-bg/*（** 表示递归，适合打进 jar）
-    locations: []
+    # 演示服务内置 10 张背景图（resources/captcha-bg/，1440x800 PNG）
+    locations:
+      - "classpath:captcha-bg/*"
     # 兼容旧配置：等价于往 locations 里加一条目录
     dir: ""
     # 使用外部图片的概率（0~100），剩余概率使用程序化背景
-    ratio: 50
+    ratio: 100
     # 远程图片连接 / 读取超时（毫秒）
     connect-timeout-ms: 3000
     read-timeout-ms: 5000

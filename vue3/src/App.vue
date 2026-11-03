@@ -23,6 +23,13 @@ const externalBackgrounds = [
   '/backgrounds/bg-aurora.svg',
   '/backgrounds/bg-dunes.svg',
   '/backgrounds/bg-night.svg',
+  '/backgrounds/bg-ocean.svg',
+  '/backgrounds/bg-peak.svg',
+  '/backgrounds/bg-forest.svg',
+  '/backgrounds/bg-city.svg',
+  '/backgrounds/bg-coral.svg',
+  '/backgrounds/bg-cloud.svg',
+  '/backgrounds/bg-geo.svg',
 ]
 
 /** 点选字符集：后端默认 zh，这里按次覆盖演示 clickCharset 参数 */

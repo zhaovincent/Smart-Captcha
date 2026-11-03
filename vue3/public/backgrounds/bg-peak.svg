@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="400" viewBox="0 0 720 400">
+  <defs>
+    <linearGradient id="sunset" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7c2d12"/>
+      <stop offset="0.4" stop-color="#c2410c"/>
+      <stop offset="0.7" stop-color="#f59e0b"/>
+      <stop offset="1" stop-color="#fbbf24"/>
+    </linearGradient>
+  </defs>
+  <rect width="720" height="400" fill="url(#sunset)"/>
+  <circle cx="360" cy="250" r="55" fill="#fff7ed" opacity="0.95"/>
+  <circle cx="360" cy="250" r="80" fill="#fde68a" opacity="0.25"/>
+  <path d="M0 250 H 720 V 400 H 0 Z" fill="#7c2d12" opacity="0.25"/>
+  <path d="M0 260 L 120 190 L 240 260 Z" fill="#431407" opacity="0.85"/>
+  <path d="M140 265 L 290 170 L 440 265 Z" fill="#291005"/>
+  <path d="M360 262 L 500 195 L 640 262 Z" fill="#431407" opacity="0.9"/>
+  <path d="M520 268 L 630 210 L 720 268 Z" fill="#291005" opacity="0.95"/>
+  <rect x="0" y="262" width="720" height="138" fill="#1c0a02"/>
+  <path d="M0 300 C 200 285, 520 315, 720 295 V 400 H 0 Z" fill="#120601" opacity="0.8"/>
+  <g fill="#fef3c7" opacity="0.6">
+    <circle cx="90" cy="60" r="1.4"/>
+    <circle cx="200" cy="100" r="1"/>
+    <circle cx="320" cy="45" r="1.2"/>
+    <circle cx="480" cy="90" r="1.3"/>
+    <circle cx="620" cy="55" r="1"/>
+  </g>
+</svg>
