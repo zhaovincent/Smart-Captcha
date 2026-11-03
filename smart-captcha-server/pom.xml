@@ -6,7 +6,7 @@
     <parent>
         <groupId>cn.localtool</groupId>
         <artifactId>smart-captcha-parent</artifactId>
-        <version>1.8.0</version>
+        <version>1.9.0</version>
     </parent>
 
     <artifactId>smart-captcha-server</artifactId>

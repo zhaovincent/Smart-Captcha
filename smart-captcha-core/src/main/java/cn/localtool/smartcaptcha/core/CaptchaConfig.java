@@ -183,6 +183,11 @@ public class CaptchaConfig {
     public static class Click {
         /** 需要点击的字符数量。 */
         private int wordCount = 3;
+        /**
+         * 画面上展示的字符数量（含干扰项），应不小于 {@link #wordCount}；
+         * 多出来的字符绘制在背景上但不需要点击。0（默认）表示与 {@code wordCount} 相同。
+         */
+        private int displayCount = 0;
         /** 点击容错半径（像素）。 */
         private int tolerance = 22;
         /** 字号。 */
@@ -223,6 +228,14 @@ public class CaptchaConfig {
 
         public void setWordCount(int wordCount) {
             this.wordCount = wordCount;
+        }
+
+        public int getDisplayCount() {
+            return displayCount;
+        }
+
+        public void setDisplayCount(int displayCount) {
+            this.displayCount = displayCount;
         }
 
         public int getTolerance() {

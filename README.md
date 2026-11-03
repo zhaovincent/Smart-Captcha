@@ -87,7 +87,7 @@ mvn clean install
 # run the server module → http://localhost:8088  (needs the install above, it resolves core/starter locally)
 mvn -pl smart-captcha-server spring-boot:run
 #   …or run the fat jar
-java -jar smart-captcha-server/target/smart-captcha-server-1.8.0.jar
+java -jar smart-captcha-server/target/smart-captcha-server-1.9.0.jar
 
 # frontend → http://localhost:5173  (vite proxies /api to 127.0.0.1:8088)
 cd vue3
@@ -158,7 +158,7 @@ The POMs written to the local repository are **flattened** by `flatten-maven-plu
 <dependency>
     <groupId>cn.localtool</groupId>
     <artifactId>smart-captcha-spring-boot-starter</artifactId>
-    <version>1.8.0</version>
+    <version>1.9.0</version>
 </dependency>
 ```
 
@@ -443,7 +443,7 @@ smart-captcha:
   interceptor:
     enabled: false                    # default: business endpoints verify the ticket themselves
   slider: { piece-size: 52, tolerance: 8 }
-  click:  { word-count: 3, tolerance: 22, font-size: 30, charset: zh, font-path: "", font-family: "" }
+  click:  { word-count: 3, display-count: 5, tolerance: 22, font-size: 30, charset: zh, font-path: "", font-family: "" }
   rotate: { size: 200, tolerance: 8 }
   background:
     locations: []                     # mixed sources: folder | file path | https URL | classpath:*
@@ -523,6 +523,7 @@ The click captcha draws either Chinese characters or Latin letters:
 - `smart-captcha.click.charset`: `zh` (Chinese, **default**) or `en` (uppercase A–Z, confusing glyphs like I/O/Q excluded).
 - Per-request override: `"clickCharset": "en"` in the generate body (or `?clickCharset=en` on the GET variant) — handy for bilingual sites.
 - The actual charset used is returned in `data.click.charset`, and the UI prompt switches with it (`请依次点击` / `Click in order`).
+- **More characters than clicks**: `smart-captcha.click.display-count` (>= `word-count`) draws extra distractor characters on the image; only `word-count` of them appear in the tip and the answer, so distractors can't pass verification. Default `0` = same as `word-count`.
 
 **Custom font.** By default the generator uses the `SansSerif` logical font (the JVM maps it to platform fonts). You can override it three ways:
 
@@ -582,6 +583,9 @@ No validation is performed and no font is recommended: once an external font is 
 - Business endpoints must be guarded server-side: `@RequireCaptcha` (or `engine.consumeTicket`) — the ticket alone is not proof of anything until a server consumes it.
 - You can enable `min-duration-ms` to reject instant submissions from scripts.
 - For production: set `smart-captcha.store.type=redis` (or `redisson`) behind a shared Redis, and add per-IP rate limiting.
+- Transports are plain JSON; run behind HTTPS in production.
+
+See `docs/captcha-verification-and-ticket.md` for a full analysis of the verification logic and what can (and cannot) be forged.
 
 ---
 
@@ -594,11 +598,11 @@ mvn -pl smart-captcha-core test   # engine only, no Spring context at all
 
 | Module | Cases | Covers |
 | --- | --- | --- |
-| core | 54 | three types (pass + fail), attempt lockout, ticket single-use, click charset (zh / en), CJK pool of 2000 common characters, custom click font (Font object / font file by path & classpath / family, used as-is without validation, 14), `auto` type pool, `min-duration-ms`, custom generator override, memory-store contract (8), background sources: folder / file list / remote URL / classpath wildcard / reload / ratio / fallback (13) |
+| core | 59 | three types (pass + fail), attempt lockout, ticket single-use, click charset (zh / en), CJK pool of 2000 common characters, click distractors (`display-count`, 3), custom click font (Font object / font file by path & classpath / family, used as-is without validation, 14), `auto` type pool, `min-duration-ms`, custom generator override, memory-store contract (8), background sources: folder / file list / remote URL / classpath wildcard / reload / ratio / fallback (13) |
 | starter | 47 | auto-configuration (default memory, unknown type fallback), store-type normalisation, `smart-captcha.background.*` + `click.font-family` / `click.font-path` binding + engine wiring (6), the same `CaptchaStore` contract on **redis** and **redisson** (8 each), engine-over-Redis flow (2), interceptor throwing `CaptchaTicketException` instead of writing a body (9), 403 mapping without any advice (2), interceptor switch: off by default / on by config (6) |
 | server | 13 | REST contract (config / generate / verify / error codes), 4 MockMvc cases for the guarded business endpoint (missing / bogus / replayed ticket, captcha API stays open) and 2 for the self-check endpoint |
 
-Total: 114 cases. The 18 Redis-backed cases **skip automatically** when no server is reachable; point them elsewhere with `-Dtest.redis.host=… -Dtest.redis.port=…` (or `REDIS_HOST` / `REDIS_PORT`).
+Total: 119 cases. The 18 Redis-backed cases **skip automatically** when no server is reachable; point them elsewhere with `-Dtest.redis.host=… -Dtest.redis.port=…` (or `REDIS_HOST` / `REDIS_PORT`).
 
 ---
 
@@ -606,8 +610,8 @@ Total: 114 cases. The 18 Redis-backed cases **skip automatically** when no serve
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| `Unresolved dependency: 'cn.localtool:smart-captcha-parent:jar:1.8.0'` in IntelliJ | the IDE picked up a POM installed **before** the POMs were flattened, or its local repository differs from the one the CLI installs into | `mvn clean install` at the repo root, then *Reload All Maven Projects*; verify IDEA → *Settings → Build Tools → Maven → Local repository* and install into exactly that path: `mvn -Dmaven.repo.local=<that path> install` |
-| `Dependency 'cn.localtool:smart-captcha-spring-boot-starter:1.8.0' not found` | never installed, or installed into another local repository | same as above; also make sure you did not run `mvn install -pl smart-captcha-spring-boot-starter` without `-am` |
+| `Unresolved dependency: 'cn.localtool:smart-captcha-parent:jar:1.9.0'` in IntelliJ | the IDE picked up a POM installed **before** the POMs were flattened, or its local repository differs from the one the CLI installs into | `mvn clean install` at the repo root, then *Reload All Maven Projects*; verify IDEA → *Settings → Build Tools → Maven → Local repository* and install into exactly that path: `mvn -Dmaven.repo.local=<that path> install` |
+| `Dependency 'cn.localtool:smart-captcha-spring-boot-starter:1.9.0' not found` | never installed, or installed into another local repository | same as above; also make sure you did not run `mvn install -pl smart-captcha-spring-boot-starter` without `-am` |
 | `NoClassDefFoundError: …CaptchaInterceptor` / Redis store missing | `spring-boot-starter-web`, `spring-boot-starter-data-redis` and `redisson` are **optional** dependencies of the starter | add the ones you actually use to your own project |
 
 ---

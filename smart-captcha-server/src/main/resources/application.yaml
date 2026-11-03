@@ -43,6 +43,8 @@ smart-captcha:
   click:
     # 需要依次点击的字符数
     word-count: 3
+    # 画面上展示的字符数（含干扰项，>= word-count，多出的字不需要点击）；0 表示与 word-count 相同
+    # display-count: 5
     # 点击容错半径（原图像素）
     tolerance: 22
     font-size: 30

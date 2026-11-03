@@ -33,6 +33,10 @@ import java.util.logging.Logger;
  * <p>字符集由 {@code click.charset} 控制（{@code zh} 中文、默认；{@code en} 英文），
  * 也可在单次生成请求中通过 {@code clickCharset} 覆盖。</p>
  *
+ * <p>展示数与点击数分离：{@code click.word-count} 是需要点击的字数，
+ * {@code click.display-count}（可选，>= word-count）是画面上实际绘制的字数，
+ * 多出来的字是干扰项，不参与提示与校验；不设置时两者相同。</p>
+ *
  * <p>字体可自定义：代码里调 {@code config.getClick().setFont(Font)} 传入字体对象，
  * 或配置 {@code smart-captcha.click.font-path} 指定字体文件（本地路径 /
  * {@code classpath:} 资源）、{@code smart-captcha.click.font-family} 指定字体族名。
@@ -177,12 +181,16 @@ public class ClickWordCaptchaGenerator implements CaptchaGenerator {
         int height = background.getHeight();
         int fontSize = Math.min(config.getClick().getFontSize(), Math.max(18, height / 5));
         int count = Math.max(2, Math.min(config.getClick().getWordCount(), 5));
+        // 画面展示数：>= 需要点击数，多出的为干扰项；display-count 为 0 时与点击数相同
+        int display = config.getClick().getDisplayCount() > 0
+                ? Math.max(count, Math.min(config.getClick().getDisplayCount(), 8))
+                : count;
 
         String charset = resolveCharset(options == null ? null : options.clickCharset(),
                 config.getClick().getCharset());
         boolean cjk = CHARSET_ZH.equals(charset);
         String[] pool = cjk ? CJK_POOL : LATIN_POOL;
-        List<String> picked = pickWords(pool, count, random);
+        List<String> picked = pickWords(pool, display, random);
 
         Font font = resolveFont(config.getClick(), fontSize, cjk);
 
@@ -201,13 +209,15 @@ public class ClickWordCaptchaGenerator implements CaptchaGenerator {
             drawWord(g, font, placement, random);
         }
 
-        // 打乱顺序即“需要依次点击的顺序”，答案坐标同步打乱
+        // 打乱后取前 count 个作为“需要依次点击的字”，其余只是画面上的干扰项；
+        // 若背景太挤导致实际放下的字少于 count，则以能放下的为准
         List<Placement> ordered = new ArrayList<>(placements);
         Collections.shuffle(ordered, random);
+        int required = Math.min(count, ordered.size());
 
         List<String> words = new ArrayList<>();
         List<double[]> points = new ArrayList<>();
-        for (Placement p : ordered) {
+        for (Placement p : ordered.subList(0, required)) {
             words.add(p.word());
             points.add(new double[]{p.centerX(), p.centerY()});
         }
