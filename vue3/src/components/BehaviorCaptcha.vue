@@ -34,6 +34,17 @@ const props = defineProps({
   display: { type: String, default: 'inline' },
   /** 挂载后直接展开面板并加载 */
   defaultOpen: { type: Boolean, default: false },
+  /**
+   * 主题：
+   *  - auto（默认）跟随系统 prefers-color-scheme
+   *  - light 固定浅色 / dark 固定深色
+   * 深浅配色由 --bc-* CSS 变量驱动，业务方可在外层覆盖变量做品牌定制。
+   */
+  theme: {
+    type: String,
+    default: 'auto',
+    validator: (v) => ['auto', 'light', 'dark'].includes(v),
+  },
   /** 外部事件回调超时（毫秒），避免父级忘记调用 done 时一直卡在加载态 */
   eventTimeout: { type: Number, default: 15000 },
 })
@@ -70,6 +81,9 @@ const stageComponent = computed(() => {
 })
 
 const typeLabel = computed(() => TYPE_LABELS[activeType.value] ?? '安全验证')
+
+/** 主题作用域类：触发条、内联面板、弹窗（Teleport 到 body 后脱离 .bc，必须单独携带） */
+const themeClass = computed(() => `sc-${props.theme}`)
 
 const captchaRatio = computed(() => {
   const c = challenge.value
@@ -382,7 +396,7 @@ defineExpose({
 </script>
 
 <template>
-  <div class="bc" :class="{ 'is-pass': phase === 'pass' }">
+  <div class="bc" :class="[themeClass, { 'is-pass': phase === 'pass' }]">
     <button type="button" class="bc-bar" :aria-expanded="open ? 'true' : 'false'" @click="toggle">
       <span class="bc-bar-icon" aria-hidden="true">
         <svg v-if="phase !== 'pass'" viewBox="0 0 24 24" width="18" height="18">
@@ -402,7 +416,7 @@ defineExpose({
 
     <Teleport to="body" :disabled="!isPopup">
       <transition :name="isPopup ? 'bc-pop' : 'bc-drop'">
-        <div v-if="open" :class="isPopup ? 'bc-overlay' : 'bc-inline'">
+        <div v-if="open" :class="[themeClass, isPopup ? 'bc-overlay' : 'bc-inline']">
           <div v-if="isPopup" class="bc-mask" @click="onBackdrop"></div>
           <div
             ref="panelRef"
@@ -474,6 +488,129 @@ defineExpose({
 </template>
 
 <style scoped>
+/* ---------- 主题变量（浅色默认值） ----------
+ * 作用域：触发条 .bc / 内联容器 .bc-inline / 弹窗容器 .bc-overlay（Teleport 后脱离 .bc）。
+ * 业务方可在任意外层覆盖这些变量做品牌定制，例如：
+ * .my-page { --bc-primary: #2563eb; }
+ */
+.bc,
+.bc-inline,
+.bc-overlay {
+  --bc-bar-bg: #f8fafc;
+  --bc-bar-border: #e2e8f0;
+  --bc-bar-text: #475569;
+  --bc-bar-hover-bg: #f5f6ff;
+  --bc-bar-hover-border: #c7d2fe;
+  --bc-ok-bg: #f0fdf4;
+  --bc-ok-border: #bbf7d0;
+  --bc-ok-text: #15803d;
+  --bc-surface: #ffffff;
+  --bc-surface-border: #e2e8f0;
+  --bc-text: #0f172a;
+  --bc-text-muted: #475569;
+  --bc-text-faint: #94a3b8;
+  --bc-hover: #f1f5f9;
+  --bc-primary: #4f46e5;
+  --bc-primary-mid: #818cf8;
+  --bc-primary-weak: #c7d2fe;
+  --bc-primary-soft: #eef2ff;
+  --bc-primary-ring: rgba(79, 70, 229, 0.15);
+  --bc-canvas: #eef2f7;
+  --bc-track-bg: #eef2f7;
+  --bc-track-border: #e2e8f0;
+  --bc-word-bg: #f1f5f9;
+  --bc-word-border: #e2e8f0;
+  --bc-word-text: #0f172a;
+  --bc-dot-alt: #312e81;
+  --bc-success: #16a34a;
+  --bc-success-soft: #dcfce7;
+  --bc-danger: #dc2626;
+  --bc-mask: rgba(15, 23, 42, 0.45);
+  --bc-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+  --bc-shadow-popup: 0 24px 60px rgba(15, 23, 42, 0.28);
+  --bc-handle-shadow: 0 2px 8px rgba(79, 70, 229, 0.45);
+}
+
+/* 深色主题：theme="dark" */
+.sc-dark.bc,
+.sc-dark.bc-inline,
+.sc-dark.bc-overlay {
+  --bc-bar-bg: #243044;
+  --bc-bar-border: #33415c;
+  --bc-bar-text: #cbd5e1;
+  --bc-bar-hover-bg: #2b3a55;
+  --bc-bar-hover-border: #4c5a7d;
+  --bc-ok-bg: rgba(74, 222, 128, 0.12);
+  --bc-ok-border: rgba(74, 222, 128, 0.35);
+  --bc-ok-text: #4ade80;
+  --bc-surface: #161e2e;
+  --bc-surface-border: #2c3a55;
+  --bc-text: #e2e8f0;
+  --bc-text-muted: #a9b4c9;
+  --bc-text-faint: #64748b;
+  --bc-hover: #223050;
+  --bc-primary: #818cf8;
+  --bc-primary-mid: #818cf8;
+  --bc-primary-weak: #4c5698;
+  --bc-primary-soft: rgba(129, 140, 248, 0.16);
+  --bc-primary-ring: rgba(129, 140, 248, 0.25);
+  --bc-canvas: #0f172a;
+  --bc-track-bg: #223050;
+  --bc-track-border: #33415c;
+  --bc-word-bg: #223050;
+  --bc-word-border: #33415c;
+  --bc-word-text: #e2e8f0;
+  --bc-dot-alt: #1e1b4b;
+  --bc-success: #4ade80;
+  --bc-success-soft: #14532d;
+  --bc-danger: #f87171;
+  --bc-mask: rgba(2, 6, 23, 0.65);
+  --bc-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --bc-shadow-popup: 0 24px 60px rgba(0, 0, 0, 0.6);
+  --bc-handle-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* 深色主题：theme="auto" 跟随系统 */
+@media (prefers-color-scheme: dark) {
+  .sc-auto.bc,
+  .sc-auto.bc-inline,
+  .sc-auto.bc-overlay {
+    --bc-bar-bg: #243044;
+    --bc-bar-border: #33415c;
+    --bc-bar-text: #cbd5e1;
+    --bc-bar-hover-bg: #2b3a55;
+    --bc-bar-hover-border: #4c5a7d;
+    --bc-ok-bg: rgba(74, 222, 128, 0.12);
+    --bc-ok-border: rgba(74, 222, 128, 0.35);
+    --bc-ok-text: #4ade80;
+    --bc-surface: #161e2e;
+    --bc-surface-border: #2c3a55;
+    --bc-text: #e2e8f0;
+    --bc-text-muted: #a9b4c9;
+    --bc-text-faint: #64748b;
+    --bc-hover: #223050;
+    --bc-primary: #818cf8;
+    --bc-primary-mid: #818cf8;
+    --bc-primary-weak: #4c5698;
+    --bc-primary-soft: rgba(129, 140, 248, 0.16);
+    --bc-primary-ring: rgba(129, 140, 248, 0.25);
+    --bc-canvas: #0f172a;
+    --bc-track-bg: #223050;
+    --bc-track-border: #33415c;
+    --bc-word-bg: #223050;
+    --bc-word-border: #33415c;
+    --bc-word-text: #e2e8f0;
+    --bc-dot-alt: #1e1b4b;
+    --bc-success: #4ade80;
+    --bc-success-soft: #14532d;
+    --bc-danger: #f87171;
+    --bc-mask: rgba(2, 6, 23, 0.65);
+    --bc-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+    --bc-shadow-popup: 0 24px 60px rgba(0, 0, 0, 0.6);
+    --bc-handle-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  }
+}
+
 .bc {
   width: 100%;
   max-width: 360px;
@@ -488,33 +625,33 @@ defineExpose({
   align-items: center;
   gap: 10px;
   padding: 0 14px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--bc-bar-border);
   border-radius: 10px;
-  background: #f8fafc;
-  color: #475569;
+  background: var(--bc-bar-bg);
+  color: var(--bc-bar-text);
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .bc-bar:hover {
-  border-color: #c7d2fe;
-  background: #f5f6ff;
+  border-color: var(--bc-bar-hover-border);
+  background: var(--bc-bar-hover-bg);
 }
 
 .bc.is-pass .bc-bar {
-  border-color: #bbf7d0;
-  background: #f0fdf4;
-  color: #15803d;
+  border-color: var(--bc-ok-border);
+  background: var(--bc-ok-bg);
+  color: var(--bc-ok-text);
 }
 
 .bc-bar-icon {
   display: flex;
-  color: #4f46e5;
+  color: var(--bc-primary);
 }
 
 .bc.is-pass .bc-bar-icon {
-  color: #16a34a;
+  color: var(--bc-success);
 }
 
 .bc-bar-text {
@@ -524,17 +661,17 @@ defineExpose({
 
 .bc-bar-arrow {
   font-size: 18px;
-  color: #cbd5e1;
+  color: var(--bc-text-faint);
 }
 
 /* ---------- 面板 ---------- */
 .bc-panel {
   margin-top: 10px;
   padding: 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--bc-surface-border);
   border-radius: 14px;
-  background: #fff;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+  background: var(--bc-surface);
+  box-shadow: var(--bc-shadow);
 }
 
 /* ---------- 弹窗模式 ---------- */
@@ -551,7 +688,7 @@ defineExpose({
 .bc-mask {
   position: absolute;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
+  background: var(--bc-mask);
   backdrop-filter: blur(2px);
 }
 
@@ -562,7 +699,7 @@ defineExpose({
   padding: 14px;
   max-height: calc(100vh - 48px);
   overflow-y: auto;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+  box-shadow: var(--bc-shadow-popup);
   outline: none;
 }
 
@@ -576,15 +713,15 @@ defineExpose({
 .bc-head-title {
   font-size: 14px;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--bc-text);
 }
 
 .bc-chip {
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #eef2ff;
-  color: #4f46e5;
+  background: var(--bc-primary-soft);
+  color: var(--bc-primary);
 }
 
 .bc-head-actions {
@@ -602,14 +739,14 @@ defineExpose({
   border: none;
   border-radius: 7px;
   background: transparent;
-  color: #64748b;
+  color: var(--bc-text-muted);
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .bc-icon-btn:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--bc-hover);
+  color: var(--bc-text);
 }
 
 .bc-icon-btn:disabled {
@@ -629,27 +766,36 @@ defineExpose({
   justify-content: center;
   gap: 10px;
   border-radius: 10px;
-  background: #f8fafc;
-  color: #64748b;
+  background: var(--bc-track-bg);
+  color: var(--bc-text-muted);
   font-size: 13px;
 }
 
 .bc-pass-block {
-  color: #16a34a;
+  color: var(--bc-success);
   font-size: 15px;
   font-weight: 600;
 }
 
+/* 通过图标：颜色交给主题变量（CSS 优先级高于 SVG 表现属性） */
+.bc-pass-block circle {
+  fill: var(--bc-success-soft);
+}
+
+.bc-pass-block svg path {
+  stroke: var(--bc-success);
+}
+
 .bc-error-block {
-  color: #dc2626;
+  color: var(--bc-danger);
 }
 
 .bc-spinner {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  border: 3px solid #e2e8f0;
-  border-top-color: #4f46e5;
+  border: 3px solid var(--bc-track-border);
+  border-top-color: var(--bc-primary);
   animation: bc-spin 0.8s linear infinite;
 }
 
@@ -670,28 +816,28 @@ defineExpose({
 }
 
 .bc-msg {
-  color: #475569;
+  color: var(--bc-text-muted);
 }
 
 .bc-msg.is-error {
-  color: #dc2626;
+  color: var(--bc-danger);
 }
 
 .bc-msg.is-muted {
-  color: #94a3b8;
+  color: var(--bc-text-faint);
 }
 
 .bc-link {
   border: none;
   background: none;
-  color: #4f46e5;
+  color: var(--bc-primary);
   font-size: 12.5px;
   cursor: pointer;
   padding: 2px 4px;
 }
 
 .bc-link:disabled {
-  color: #c7d2fe;
+  color: var(--bc-primary-weak);
   cursor: not-allowed;
 }
 

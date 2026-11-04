@@ -95,7 +95,7 @@ pnpm install
 pnpm dev
 ```
 
-演示页 URL 参数：`?demo=slider`、`?demo=click`、`?demo=rotate`，加 `&bg=ext` 使用外部背景图数组。
+演示页 URL 参数：`?demo=slider`、`?demo=click`、`?demo=rotate`，加 `&bg=ext` 使用外部背景图数组，加 `&theme=dark`（或 `light` / `auto`）强制主题。
 后端起在别的地址时用 `CAPTCHA_API_TARGET=http://host:port pnpm dev`。
 
 ---
@@ -318,6 +318,7 @@ async function handleVerify(payload, done) {
 | `type` | `String` | `'auto'` | `auto` \| `slider` \| `click` \| `rotate` |
 | `types` | `Array` | `['slider','click','rotate']` | `type="auto"` 时的随机池 |
 | `display` | `String` | `'inline'` | `inline` 在触发条下方展开；`popup` 居中弹窗 + 遮罩 |
+| `theme` | `String` | `'auto'` | `auto` 跟随系统深浅色；`light` / `dark` 固定主题 |
 | `barText` | `String` | `'点击进行安全验证'` | 收起状态条上的文案 |
 | `successText` | `String` | `'验证成功'` | 通过后的文案 |
 | `autoRefresh` | `Boolean` | `true` | 校验失败后自动换一张 |
@@ -327,6 +328,8 @@ async function handleVerify(payload, done) {
 运行时修改 `type` 会自动按新方式重新加载（若面板是收起的，则下次展开时加载）。`refresh()` 只在**配置没变、只想换一张**时用（比如切换了背景图来源）；由于 props 在下一轮渲染才生效，调用前请 `await nextTick()`，否则组件读到的还是旧值。
 
 `display` 只影响呈现方式——事件、`defaultOpen`、`refresh()` 与对外方法在两种模式下行为完全一致。`popup` 模式下面板会被 Teleport 到 `<body>`（因此不会被父级 `overflow: hidden` 或滚动容器裁掉），打开期间锁定页面滚动，ESC 或点击遮罩关闭，验证通过后约 0.9 秒自动收起；面板展开时切换 `display`，会原地在两种布局间切换。
+
+**深色模式**：`theme` 默认 `auto` 跟随系统 `prefers-color-scheme`，也可传 `light` / `dark` 固定。全部配色由 `--bc-*` CSS 变量驱动（`--bc-primary`、`--bc-surface`、`--bc-text` 等，定义见组件样式），业务方在外层覆盖变量即可做品牌定制；popup 弹窗虽然 Teleport 到 `<body>`，但主题作用域类会同时挂在弹窗容器上，深浅色跟随组件配置。
 
 ### 事件
 

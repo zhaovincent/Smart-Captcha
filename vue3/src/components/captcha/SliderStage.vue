@@ -139,7 +139,7 @@ defineExpose({ reset })
   aspect-ratio: var(--captcha-ratio, 1.8);
   border-radius: 10px;
   overflow: hidden;
-  background: #eef2f7;
+  background: var(--bc-canvas, #eef2f7);
   touch-action: none;
   user-select: none;
 }
@@ -169,15 +169,15 @@ defineExpose({ reset })
   position: relative;
   height: 42px;
   border-radius: 21px;
-  background: #eef2f7;
-  border: 1px solid #e2e8f0;
+  background: var(--bc-track-bg, #eef2f7);
+  border: 1px solid var(--bc-track-border, #e2e8f0);
   overflow: hidden;
 }
 
 .ss-fill {
   position: absolute;
   inset: 0 auto 0 0;
-  background: linear-gradient(90deg, #c7d2fe, #818cf8);
+  background: linear-gradient(90deg, var(--bc-primary-weak, #c7d2fe), var(--bc-primary-mid, #818cf8));
   border-radius: 21px;
 }
 
@@ -188,7 +188,7 @@ defineExpose({ reset })
   align-items: center;
   justify-content: center;
   font-size: 12.5px;
-  color: #94a3b8;
+  color: var(--bc-text-faint, #94a3b8);
   pointer-events: none;
 }
 
@@ -202,11 +202,11 @@ defineExpose({ reset })
   justify-content: center;
   border: none;
   border-radius: 21px;
-  background: #4f46e5;
+  background: var(--bc-primary, #4f46e5);
   color: #fff;
   cursor: grab;
   touch-action: none;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.45);
+  box-shadow: var(--bc-handle-shadow, 0 2px 8px rgba(79, 70, 229, 0.45));
   transition: background 0.2s;
 }
 
@@ -216,6 +216,6 @@ defineExpose({ reset })
 
 .ss-handle:disabled {
   cursor: not-allowed;
-  background: #a5b4fc;
+  background: var(--bc-primary-weak, #a5b4fc);
 }
 </style>

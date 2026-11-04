@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, reactive, ref } from 'vue'
+import { computed, nextTick, reactive, ref, watchEffect } from 'vue'
 import BehaviorCaptcha from './components/BehaviorCaptcha.vue'
 import { demoLogin, generateCaptcha, imageToDataUrl, verifyCaptcha } from './api/captcha.js'
 
@@ -34,6 +34,29 @@ const externalBackgrounds = [
 
 /** 点选字符集：后端默认 zh，这里按次覆盖演示 clickCharset 参数 */
 const clickCharset = ref('zh')
+
+/** 主题：light / dark / auto（跟随系统），与组件 theme prop 同语义；?theme= 优先，localStorage 记忆 */
+const theme = ref('auto')
+const themeOptions = [
+  { value: 'light', label: '浅色' },
+  { value: 'dark', label: '深色' },
+  { value: 'auto', label: '跟随系统' },
+]
+{
+  const q = new URLSearchParams(window.location.search)
+  const t = q.get('theme')
+  const saved = localStorage.getItem('sc-demo-theme')
+  theme.value = ['light', 'dark', 'auto'].includes(t) ? t : ['light', 'dark', 'auto'].includes(saved) ? saved : 'auto'
+}
+function setTheme(value) {
+  if (theme.value === value) return
+  theme.value = value
+  localStorage.setItem('sc-demo-theme', value)
+  log(`主题切换为：${value === 'auto' ? '跟随系统' : value === 'dark' ? '深色' : '浅色'}`)
+}
+watchEffect(() => {
+  document.documentElement.dataset.theme = theme.value
+})
 
 const captchaRef = ref(null)
 const verified = ref(false)
@@ -201,7 +224,19 @@ function resetCaptcha() {
 <template>
   <div class="page">
     <header class="hero">
-      <h1>SmartCaptcha <span>·</span> 行为验证码</h1>
+      <div class="hero-head">
+        <h1>SmartCaptcha <span>·</span> 行为验证码</h1>
+        <div class="segment theme-seg" role="group" aria-label="主题切换">
+          <button
+            v-for="opt in themeOptions"
+            :key="opt.value"
+            :class="{ active: theme === opt.value }"
+            @click="setTheme(opt.value)"
+          >
+            {{ opt.label }}
+          </button>
+        </div>
+      </div>
       <p>
         Vue 3 组件 + Spring Boot 3 服务端。支持滑块拼图 / 文字点选 / 角度旋转三种验证方式，
         可固定一种、可配置随机；背景图支持服务端程序化自动生成，也可外部传入图片数组。
@@ -228,6 +263,7 @@ function resetCaptcha() {
             :type="mode"
             :types="['slider', 'click', 'rotate']"
             :display="displayMode"
+            :theme="theme"
             bar-text="点击进行安全验证"
             :default-open="autoOpen"
             @request="handleRequest"
@@ -306,14 +342,10 @@ function resetCaptcha() {
         </div>
 
         <div style="margin-top: 16px; display: flex; gap: 8px">
-          <button
-            class="segment-btn-reset"
-            style="padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line); background: #fff; font-size: 13px; cursor: pointer"
-            @click="captchaRef?.refresh?.({ open: true })"
-          >
+          <button class="ghost-btn" @click="captchaRef?.refresh?.({ open: true })">
             外部调用 refresh()
           </button>
-          <button style="padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line); background: #fff; font-size: 13px; cursor: pointer" @click="resetDemo">重置演示</button>
+          <button class="ghost-btn" @click="resetDemo">重置演示</button>
         </div>
 
         <div class="state-row">

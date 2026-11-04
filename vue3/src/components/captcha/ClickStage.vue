@@ -46,7 +46,6 @@ function dotStyle(p, index) {
   return {
     left: `${(p.x / props.challenge.width) * 100}%`,
     top: `${(p.y / props.challenge.height) * 100}%`,
-    background: index === clicked.value.length - 1 ? '#4f46e5' : '#312e81',
   }
 }
 
@@ -79,6 +78,7 @@ defineExpose({ reset })
         v-for="(p, i) in clicked"
         :key="`${p.x}-${p.y}-${i}`"
         class="cs-dot"
+        :class="{ 'is-current': i === clicked.length - 1 }"
         :style="dotStyle(p, i)"
       >{{ i + 1 }}</span>
     </div>
@@ -98,11 +98,11 @@ defineExpose({ reset })
   gap: 8px;
   flex-wrap: wrap;
   font-size: 13px;
-  color: #475569;
+  color: var(--bc-text-muted, #475569);
 }
 
 .cs-label {
-  color: #64748b;
+  color: var(--bc-text-faint, #64748b);
 }
 
 .cs-word {
@@ -113,18 +113,18 @@ defineExpose({ reset })
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background: var(--bc-word-bg, #f1f5f9);
+  border: 1px solid var(--bc-word-border, #e2e8f0);
   font-size: 17px;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--bc-word-text, #0f172a);
   transition: all 0.15s;
 }
 
 .cs-word.is-current {
-  border-color: #4f46e5;
-  color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  border-color: var(--bc-primary, #4f46e5);
+  color: var(--bc-primary, #4f46e5);
+  box-shadow: 0 0 0 3px var(--bc-primary-ring, rgba(79, 70, 229, 0.15));
 }
 
 .cs-word.is-done {
@@ -138,7 +138,7 @@ defineExpose({ reset })
   aspect-ratio: var(--captcha-ratio, 1.8);
   border-radius: 10px;
   overflow: hidden;
-  background: #eef2f7;
+  background: var(--bc-canvas, #eef2f7);
   cursor: pointer;
   touch-action: manipulation;
   user-select: none;
@@ -171,6 +171,11 @@ defineExpose({ reset })
   font-weight: 600;
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.4);
   border: 1.5px solid rgba(255, 255, 255, 0.9);
+  background: var(--bc-dot-alt, #312e81);
   pointer-events: none;
+}
+
+.cs-dot.is-current {
+  background: var(--bc-primary, #4f46e5);
 }
 </style>

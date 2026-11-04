@@ -9,6 +9,89 @@
   --err: #dc2626;
   --bg: #f6f8fc;
   --card: #ffffff;
+  --input-bg: #fbfcfe;
+  --btn-bg: #ffffff;
+  --soft-bg: #f8fafc;
+  --soft-line: #eef2f7;
+  --switch-off: #cbd5e1;
+  --ok-bg: #dcfce7;
+  --ok-line: #bbf7d0;
+  --err-bg: #fef2f2;
+  --err-line: #fecaca;
+  --code-ok-bg: #ecfdf5;
+  --code-ok-text: #059669;
+  --code-get-bg: #eff6ff;
+  --code-get-text: #2563eb;
+  --card-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
+  --glow-1: rgba(99, 102, 241, 0.14);
+  --glow-2: rgba(45, 212, 191, 0.12);
+}
+
+/* 深色主题：html[data-theme='dark']（显式）或系统深色 + data-theme='auto' */
+html[data-theme='dark'] {
+  --ink: #e2e8f0;
+  --ink-2: #aab6cc;
+  --ink-3: #64748b;
+  --line: #26334d;
+  --primary: #818cf8;
+  --primary-soft: rgba(129, 140, 248, 0.16);
+  --ok: #4ade80;
+  --err: #f87171;
+  --bg: #0b1220;
+  --card: #121a2b;
+  --input-bg: #0e1626;
+  --btn-bg: #182338;
+  --soft-bg: #0e1626;
+  --soft-line: #1c2941;
+  --switch-off: #33415c;
+  --ok-bg: rgba(74, 222, 128, 0.14);
+  --ok-line: rgba(74, 222, 128, 0.35);
+  --err-bg: rgba(248, 113, 113, 0.12);
+  --err-line: rgba(248, 113, 113, 0.35);
+  --code-ok-bg: rgba(5, 150, 105, 0.16);
+  --code-ok-text: #34d399;
+  --code-get-bg: rgba(37, 99, 235, 0.18);
+  --code-get-text: #60a5fa;
+  --card-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  --glow-1: rgba(99, 102, 241, 0.2);
+  --glow-2: rgba(45, 212, 191, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme='auto'] {
+    --ink: #e2e8f0;
+    --ink-2: #aab6cc;
+    --ink-3: #64748b;
+    --line: #26334d;
+    --primary: #818cf8;
+    --primary-soft: rgba(129, 140, 248, 0.16);
+    --ok: #4ade80;
+    --err: #f87171;
+    --bg: #0b1220;
+    --card: #121a2b;
+    --input-bg: #0e1626;
+    --btn-bg: #182338;
+    --soft-bg: #0e1626;
+    --soft-line: #1c2941;
+    --switch-off: #33415c;
+    --ok-bg: rgba(74, 222, 128, 0.14);
+    --ok-line: rgba(74, 222, 128, 0.35);
+    --err-bg: rgba(248, 113, 113, 0.12);
+    --err-line: rgba(248, 113, 113, 0.35);
+    --code-ok-bg: rgba(5, 150, 105, 0.16);
+    --code-ok-text: #34d399;
+    --code-get-bg: rgba(37, 99, 235, 0.18);
+    --code-get-text: #60a5fa;
+    --card-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+    --glow-1: rgba(99, 102, 241, 0.2);
+    --glow-2: rgba(45, 212, 191, 0.1);
+  }
+}
+
+/* 主题切换过渡，避免切换时闪白 */
+html.theme-switching body,
+html.theme-switching .card {
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
 
 * {
@@ -25,8 +108,8 @@ body {
   font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', -apple-system,
     BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background:
-    radial-gradient(1000px 500px at 85% -10%, rgba(99, 102, 241, 0.14), transparent 60%),
-    radial-gradient(800px 400px at -10% 10%, rgba(45, 212, 191, 0.12), transparent 55%),
+    radial-gradient(1000px 500px at 85% -10%, var(--glow-1), transparent 60%),
+    radial-gradient(800px 400px at -10% 10%, var(--glow-2), transparent 55%),
     var(--bg);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
@@ -40,6 +123,14 @@ body {
 
 .hero {
   margin-bottom: 26px;
+}
+
+.hero-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .hero h1 {
@@ -77,7 +168,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 22px;
-  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--card-shadow);
 }
 
 .card h2 {
@@ -115,7 +206,7 @@ body {
   border-radius: 10px;
   font-size: 14px;
   color: var(--ink);
-  background: #fbfcfe;
+  background: var(--input-bg);
   outline: none;
   transition: border 0.15s, box-shadow 0.15s;
 }
@@ -135,7 +226,7 @@ body {
   padding: 7px 14px;
   border-radius: 999px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--btn-bg);
   color: var(--ink-2);
   font-size: 13px;
   cursor: pointer;
@@ -147,6 +238,14 @@ body {
   border-color: var(--primary);
   color: #fff;
   box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+/* 演示页主题切换（跟随验证码组件的 theme prop 语义） */
+.theme-seg button.active {
+  background: transparent;
+  border-color: var(--primary);
+  color: var(--primary);
+  box-shadow: none;
 }
 
 .switch-row {
@@ -164,7 +263,7 @@ body {
   height: 22px;
   border-radius: 11px;
   border: none;
-  background: #cbd5e1;
+  background: var(--switch-off);
   cursor: pointer;
   transition: background 0.2s;
   padding: 0;
@@ -200,7 +299,7 @@ body {
   padding: 10px 12px;
   border: 1px dashed var(--line);
   border-radius: 10px;
-  background: #fbfcfe;
+  background: var(--soft-bg);
   font-size: 13px;
   color: var(--ink-2);
 }
@@ -210,13 +309,13 @@ body {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
-  color: #64748b;
-  background: #eef2f7;
+  color: var(--ink-2);
+  background: var(--soft-line);
 }
 
 .state-badge.is-ok {
-  color: #15803d;
-  background: #dcfce7;
+  color: var(--ok);
+  background: var(--ok-bg);
 }
 
 .state-detail {
@@ -230,15 +329,28 @@ body {
   padding: 5px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--btn-bg);
   font-size: 12px;
   color: var(--ink-2);
   cursor: pointer;
 }
 
-.mini-btn:hover {
+.mini-btn:hover,
+.ghost-btn:hover {
   border-color: #c7d2fe;
   color: var(--primary);
+}
+
+/* 演示页普通幽灵按钮（替代原来内联样式的白底按钮） */
+.ghost-btn {
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--btn-bg);
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: border 0.15s, color 0.15s;
 }
 
 .bg-thumbs {
@@ -314,8 +426,8 @@ body {
   font-size: 12.5px;
   font-family: 'JetBrains Mono', Menlo, Consolas, monospace;
   color: var(--ink-2);
-  background: #f8fafc;
-  border: 1px solid #eef2f7;
+  background: var(--soft-bg);
+  border: 1px solid var(--soft-line);
   border-radius: 8px;
   padding: 6px 10px;
   display: flex;
@@ -334,15 +446,15 @@ body {
 }
 
 .log-list li.ok {
-  color: #15803d;
-  border-color: #bbf7d0;
-  background: #f0fdf4;
+  color: var(--ok);
+  border-color: var(--ok-line);
+  background: var(--ok-bg);
 }
 
 .log-list li.err {
-  color: #b91c1c;
-  border-color: #fecaca;
-  background: #fef2f2;
+  color: var(--err);
+  border-color: var(--err-line);
+  background: var(--err-bg);
 }
 
 /* API 文档 */
@@ -361,7 +473,7 @@ body {
 .api-table td {
   text-align: left;
   padding: 9px 10px;
-  border-bottom: 1px solid #eef2f7;
+  border-bottom: 1px solid var(--soft-line);
   vertical-align: top;
 }
 
@@ -382,13 +494,13 @@ body {
 }
 
 .api-table td.method code.m-post {
-  background: #ecfdf5;
-  color: #059669;
+  background: var(--code-ok-bg);
+  color: var(--code-ok-text);
 }
 
 .api-table td.method code.m-get {
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--code-get-bg);
+  color: var(--code-get-text);
 }
 
 .footnote {

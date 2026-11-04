@@ -95,7 +95,7 @@ pnpm install
 pnpm dev
 ```
 
-Handy demo URLs: `?demo=slider`, `?demo=click`, `?demo=rotate`, plus `&bg=ext` to use the external background array.
+Handy demo URLs: `?demo=slider`, `?demo=click`, `?demo=rotate`, plus `&bg=ext` to use the external background array and `&theme=dark` (or `light` / `auto`) to force a theme.
 Point the dev server somewhere else with `CAPTCHA_API_TARGET=http://host:port pnpm dev`.
 
 ---
@@ -318,6 +318,7 @@ async function handleVerify(payload, done) {
 | `type` | `String` | `'auto'` | `auto` \| `slider` \| `click` \| `rotate` |
 | `types` | `Array` | `['slider','click','rotate']` | Random pool used when `type="auto"` |
 | `display` | `String` | `'inline'` | `inline` expands under the bar; `popup` renders a centered modal with mask |
+| `theme` | `String` | `'auto'` | `auto` follows the system color scheme; `light` / `dark` force a fixed theme |
 | `barText` | `String` | `'点击进行安全验证'` | Text on the collapsed bar |
 | `successText` | `String` | `'验证成功'` | Text after passing |
 | `autoRefresh` | `Boolean` | `true` | Fetch a new challenge automatically after a failed attempt |
@@ -327,6 +328,8 @@ async function handleVerify(payload, done) {
 Changing `type` at runtime reloads the challenge automatically with the new type (if the panel is collapsed, it loads on the next open). Call `refresh()` only when you need a new challenge for the **same** configuration — for example after switching the background source. Since props are applied on the next render, do `await nextTick()` before calling it; otherwise the widget still sees the old value.
 
 `display` only changes presentation — the events, `defaultOpen`, `refresh()` and the exposed API behave identically in both modes. In `popup` mode the panel is teleported to `<body>` (so it is never clipped by a scrolling/overflow container), the page scroll is locked while it is open, ESC or a click on the mask closes it, and it closes itself ~0.9 s after a successful verification. Switching `display` while the panel is open moves it between the two layouts in place.
+
+**Dark mode**: `theme` defaults to `auto`, which follows the system `prefers-color-scheme`; pass `light` or `dark` to pin it. All colors are driven by `--bc-*` CSS variables (`--bc-primary`, `--bc-surface`, `--bc-text`, …; see the component styles), so overriding them on a wrapper gives you brand theming for free. Although the popup is teleported to `<body>`, the theme scope class is applied to the popup container as well, so it always follows the component's theme.
 
 ### Events
 

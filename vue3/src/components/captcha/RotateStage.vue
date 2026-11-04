@@ -131,6 +131,11 @@ defineExpose({ reset })
   filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.35));
 }
 
+/* 指示三角颜色跟随主题变量（CSS 优先级高于 SVG 表现属性） */
+.rs-marker svg path {
+  fill: var(--bc-primary, #4f46e5);
+}
+
 .rs-disc-wrap {
   width: min(220px, 72vw);
   aspect-ratio: 1;
@@ -162,7 +167,7 @@ defineExpose({ reset })
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #64748b;
+  color: var(--bc-text-faint, #64748b);
   font-size: 15px;
 }
 
@@ -171,7 +176,7 @@ defineExpose({ reset })
   appearance: none;
   height: 6px;
   border-radius: 3px;
-  background: linear-gradient(90deg, #c7d2fe, #818cf8);
+  background: linear-gradient(90deg, var(--bc-primary-weak, #c7d2fe), var(--bc-primary-mid, #818cf8));
   outline: none;
 }
 
@@ -180,9 +185,9 @@ defineExpose({ reset })
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #4f46e5;
-  border: 3px solid #fff;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.45);
+  background: var(--bc-primary, #4f46e5);
+  border: 3px solid var(--bc-surface, #fff);
+  box-shadow: var(--bc-handle-shadow, 0 2px 8px rgba(79, 70, 229, 0.45));
   cursor: grab;
 }
 
@@ -190,9 +195,9 @@ defineExpose({ reset })
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #4f46e5;
-  border: 3px solid #fff;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.45);
+  background: var(--bc-primary, #4f46e5);
+  border: 3px solid var(--bc-surface, #fff);
+  box-shadow: var(--bc-handle-shadow, 0 2px 8px rgba(79, 70, 229, 0.45));
   cursor: grab;
 }
 </style>
