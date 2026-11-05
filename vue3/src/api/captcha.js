@@ -39,7 +39,7 @@ export function fetchCaptchaConfig(apiBase) {
  * 生成验证码。
  * @param {string} apiBase 后端地址
  * @param {{type?: string, backgroundImage?: string, clickCharset?: string}} payload
- *        type=slider|click|rotate|auto；clickCharset=zh|en（覆盖服务端默认值）
+ *        type=slider|click|rotate|human|auto；clickCharset=zh|en（覆盖服务端默认值）
  */
 export function generateCaptcha(apiBase, payload = {}) {
   return request(apiBase, '/api/captcha/generate', {
@@ -52,12 +52,16 @@ export function generateCaptcha(apiBase, payload = {}) {
 /**
  * 校验验证码。
  * slider: { x, trail? }；click: { points }；rotate: { angle }
+ * human:  { nonce, trace } —— nonce 是工作量证明解，trace 是行为证据
  */
-export function verifyCaptcha(apiBase, { id, token, type, duration, x, y, angle, points, trail }) {
+export function verifyCaptcha(apiBase, { id, token, type, duration, x, y, angle, points, trail, nonce, trace }) {
+  const body = { id, token, type, duration, x, y, angle, points, trail }
+  if (nonce !== undefined && nonce !== null) body.pow = { nonce }
+  if (trace) body.trace = trace
   return request(apiBase, '/api/captcha/verify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id, token, type, duration, x, y, angle, points, trail }),
+    body: JSON.stringify(body),
   })
 }
 

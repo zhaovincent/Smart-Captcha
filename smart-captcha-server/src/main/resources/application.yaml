@@ -20,6 +20,7 @@ smart-captcha:
     - slider
     - click
     - rotate
+    - human
   # 背景画布尺寸
   width: 360
   height: 200
@@ -62,6 +63,19 @@ smart-captcha:
     size: 200
     # 角度容错（度）
     tolerance: 8
+
+  # 一键人机验证：用户只点一下，服务端靠「工作量证明 + 最短耗时 + 交互痕迹」判定
+  human:
+    # 工作量证明难度（前导 0 的二进制位）：19 ≈ 50 万次哈希，桌面约 0.1~0.3 秒；0 关闭 PoW（不推荐）
+    difficulty: 19
+    # 点击后要求等待时长的随机区间（毫秒）：每张验证码在 [delay-min-ms, delay-max-ms]
+    # 里随机抽一个值，前端等够才调校验接口，服务端按同一值做「客户端上报 + 服务端自计」双计时校验
+    delay-min-ms: 1000
+    delay-max-ms: 3000
+    # 期望的最少指针采样数（有指针按下 / 键盘输入时自动满足）
+    min-moves: 2
+    # 是否要求存在真实交互痕迹（纯 HTTP 请求没有 pointer 事件）
+    require-trace: true
 
   background:
     # 背景图来源，可混合配置任意多条（留空 = 只用程序化生成的抽象背景）：

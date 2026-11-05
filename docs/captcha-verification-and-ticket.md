@@ -1,6 +1,6 @@
 # 行为验证码校验逻辑与 Ticket 机制安全性分析
 
-> 适用版本：1.9.0（smart-captcha-core / starter / server）
+> 适用版本：1.10.0（smart-captcha-core / starter / server）
 > 本文回答三个问题：**校验是怎么做的？ticket 是怎么产生的？能不能被伪造？**
 
 ---
@@ -46,7 +46,7 @@
 
 ---
 
-## 3. 校验逻辑（三种验证方式）
+## 3. 校验逻辑（四种验证方式）
 
 `verify(VerifyInput)` 统一走四道前置检查，再按会话类型分派：
 
@@ -91,7 +91,36 @@ circularDiff(用户提交角度, 服务端targetAngle) ≤ rotate.tolerance（�
 - `circularDiff` 是环形最小差值（0~180°），所以 359° 和 1° 算等价；
 - 内圈图片被随机旋转了 `targetAngle`，用户转到正向后提交角度。
 
-### 3.5 通过后的动作
+### 3.5 一键人机验证（human）
+
+用户只点一个"我不是机器人"复选框——点击本身零成本，所以判定权在三道关上，依次检查：
+
+```
+① 工作量证明   SHA-256("SC1|" + token + "|" + salt + "|" + nonce) 的前 difficulty 位二进制为 0
+              difficulty 默认 19（≈2^19 ≈ 50 万次哈希），生成时随题下发 salt
+              token 参与哈希 → 解出来的 nonce 无法跨题复用
+② 随机等待     每张题生成时在 [delay-min-ms, delay-max-ms]（默认 1000~3000）随机抽一个「要求等待时长」，
+              存进会话答案并随 challenge 下发；前端点击后等满该值 + 随机抖动才调校验接口。
+              服务端双计时：客户端上报 duration ≥ 该值，且服务端自计的「签发 → 收到校验」耗时 ≥ 该值
+              —— duration 可以谎报，服务器时钟量出来的时间谎报不了
+③ 交互痕迹     trace 里 moves / clicks / keys 至少一个 > 0
+              （鼠标停在按钮上直接点是完全正常用法，刻意放宽；纯 HTTP 请求没有 pointer 事件）
+④ 反自动化识别 复选框在卡片内的位置每次加载随机（左 / 中 / 右 + 随机留白 + 品牌标随机隐藏），
+              所有 class 名每次挂载随机生成（样式运行时注入）——
+              自动化脚本无法按固定选择器 / 固定坐标触发点击
+```
+
+- 任何一关失败都走统一的 `reject`（消耗尝试次数、剩余次数返回给前端）；
+- ③④是启发式，真正有成本的是 ①②：批量刷题要从「发一个 HTTP 请求」变成「算 50 万次哈希 + 白等 1~3 秒」；
+- 面板打开时前端就在 Web Worker 里预计算，用户点击时 PoW 通常已就绪，等待期表现为进度动画；
+- `difficulty` 可在 `smart-captcha.human.difficulty` 配置，0 关闭 PoW（不推荐），上限 24；
+- 等待区间可在 `smart-captcha.human.delay-min-ms` / `delay-max-ms` 配置（两者设 0 可关闭计时校验）。
+
+**定位**：`human` 是低摩擦层，防的是无浏览器环境的批量脚本与提高自动化成本；
+防不住会跑真实浏览器、模拟鼠标事件的工具（那种工具同样要为每题付 PoW 的 CPU 账单）。
+对失败次数异常的来源，业务侧应回退到 slider / click。
+
+### 3.6 通过后的动作
 
 ```java
 if (passed) {
@@ -158,6 +187,11 @@ tickets.put(ticket, System.currentTimeMillis() + ttl * 1000L);
 | 暴力枚举答案 | 每个会话最多 `max-attempts` 次失败即销毁，重新取题又要重新解题 |
 | 重放一次成功的 verify | 通过时会话已删除，`store.find` 返回空 |
 | **OCR/CV 自动识图**（滑块缺口检测、点选文字识别、旋转角度估计） | **这是真正威胁**。行为验证码是概率防御：程序化识别成功率受背景复杂度、干扰项数量、tolerance 松紧影响，但永远不是 0。它提高攻击成本，不提供绝对保证 |
+| **human：不带 PoW 直接提交** | 「缺少工作量证明」，直接拒绝 |
+| **human：猜 nonce** | 摘要前 19 位为 0 的概率 1/524288；服务端验算只花一次哈希，攻击者枚举要付全部 CPU |
+| **human：把别题解出的 nonce 拿来重放** | token 参与哈希，换题即失效 |
+| **human：写个脚本循环刷** | 每次尝试都要重算 PoW；difficulty=19 时 1000 req/s ≈ 5.2 亿次哈希/秒，单机做不到，得烧矿机 |
+| **human：模拟浏览器点击（Playwright 等）** | PoW 照样要算（成本仍在），交互痕迹也满足——**这类工具防不住**，只能靠 PoW 抬成本 + 业务侧限流/回退到滑块点选 |
 
 ### 5.3 已知弱点与加固建议
 
@@ -169,6 +203,7 @@ tickets.put(ticket, System.currentTimeMillis() + ttl * 1000L);
 | `min-duration-ms` 默认关闭 | 无行为轨迹分析 | 生产环境建议开（如 500ms）；需要更强可扩展 `VerifyInput` 增加轨迹并自行校验 |
 | 默认容差较宽松 | tolerance 越大越好过 | 安全敏感场景调小 tolerance、调大 `display-count` 干扰项 |
 | 单机内存 Store 不共享 | 多实例部署时 A 实例签发的 ticket B 实例查不到 | 集群务必切 `redis` / `redisson` |
+| human 的 trace 可伪造 | 行为证据由客户端上报，跑真浏览器的工具可以任意构造 | 只当启发式用；对高风险动作回退 slider / click，或调高 `human.difficulty`（上限 24 ≈ 1600 万次哈希） |
 
 ### 5.4 结论
 
@@ -191,10 +226,16 @@ smart-captcha:
     word-count: 3                # 需要点击的字数
     display-count: 0             # 画面展示字数（>word-count 时多出的为干扰项，0=同点击数）
   rotate: { tolerance: 8 }       # 旋转容差 °
+  human:
+    difficulty: 19              # PoW 难度（前导 0 bit），0 关闭；约 2^difficulty 次哈希
+    delay-min-ms: 1000          # 点击后要求等待时长的随机区间下限
+    delay-max-ms: 3000          # 随机区间上限；两值都为 0 时关闭计时校验
+    min-moves: 2                # 期望的最少指针采样数
+    require-trace: true         # 是否要求存在真实交互痕迹
   interceptor:
     enabled: false               # 拦截器默认关闭；开启后 @RequireCaptcha 生效
 ```
 
 ---
 
-*实现代码：`CaptchaEngine#verify`、`*CaptchaGenerator`、`CaptchaStore` 及其 memory/redis/redisson 实现；测试覆盖见 README「测试分布」章节。*
+*实现代码：`CaptchaEngine#verify`、`*CaptchaGenerator`、`ProofOfWork`、`CaptchaStore` 及其 memory/redis/redisson 实现；测试覆盖见 README「测试分布」章节。*

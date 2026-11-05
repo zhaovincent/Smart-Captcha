@@ -3,12 +3,14 @@ package cn.localtool.smartcaptcha.core;
 import cn.localtool.smartcaptcha.core.generator.CaptchaGenerator;
 import cn.localtool.smartcaptcha.core.generator.ClickWordCaptchaGenerator;
 import cn.localtool.smartcaptcha.core.generator.GenerateOptions;
+import cn.localtool.smartcaptcha.core.generator.HumanCaptchaGenerator;
 import cn.localtool.smartcaptcha.core.generator.RotateCaptchaGenerator;
 import cn.localtool.smartcaptcha.core.generator.SliderCaptchaGenerator;
 import cn.localtool.smartcaptcha.core.store.CaptchaStore;
 import cn.localtool.smartcaptcha.core.store.MemoryCaptchaStore;
 import cn.localtool.smartcaptcha.core.support.BackgroundFactory;
 import cn.localtool.smartcaptcha.core.support.ImageSupport;
+import cn.localtool.smartcaptcha.core.support.ProofOfWork;
 
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
@@ -82,7 +84,8 @@ public class CaptchaEngine {
         Map<CaptchaType, CaptchaGenerator> map = new EnumMap<>(CaptchaType.class);
         // 1) 内置实现
         for (CaptchaGenerator builtin : List.of(
-                new SliderCaptchaGenerator(), new ClickWordCaptchaGenerator(), new RotateCaptchaGenerator())) {
+                new SliderCaptchaGenerator(), new ClickWordCaptchaGenerator(),
+                new RotateCaptchaGenerator(), new HumanCaptchaGenerator())) {
             map.put(builtin.type(), builtin);
         }
         // 2) ServiceLoader 插件（覆盖同类型内置实现）
@@ -158,12 +161,15 @@ public class CaptchaEngine {
 
         int width = config.canvasWidth();
         int height = config.canvasHeight();
-        BufferedImage background = resolveBackground(backgroundImage, width, height);
 
         CaptchaGenerator generator = generators.get(type);
         if (generator == null) {
             throw new CaptchaException(4001, "暂不支持的验证方式：" + type.getCode());
         }
+        // 人机验证不出图，跳过背景生成与 PNG 编码，省掉一次无意义的 CPU 开销
+        BufferedImage background = generator.requiresBackground()
+                ? resolveBackground(backgroundImage, width, height)
+                : null;
         GenerationResult result = generator.generate(background, config,
                 ThreadLocalRandom.current(), GenerateOptions.of(clickCharset));
 
@@ -173,7 +179,8 @@ public class CaptchaEngine {
         store.save(new CaptchaSession(id, token, type, result.answer(), expireAt));
 
         return new CaptchaChallenge(id, token, type.getCode(), result.width(), result.height(),
-                ImageSupport.toDataUrl(result.image()), result.slider(), result.click(), result.rotate(),
+                result.image() == null ? null : ImageSupport.toDataUrl(result.image()),
+                result.slider(), result.click(), result.rotate(), result.human(),
                 config.getExpireSeconds(), result.tip());
     }
 
@@ -212,11 +219,18 @@ public class CaptchaEngine {
             return reject(session, "操作过快，请重试");
         }
 
-        boolean passed = switch (session.getType()) {
-            case SLIDER -> checkSlider(session.getAnswer(), input);
-            case CLICK -> checkClick(session.getAnswer(), input);
-            case ROTATE -> checkRotate(session.getAnswer(), input);
-        };
+        boolean passed;
+        String rejectMessage = null;
+        switch (session.getType()) {
+            case SLIDER -> passed = checkSlider(session.getAnswer(), input);
+            case CLICK -> passed = checkClick(session.getAnswer(), input);
+            case ROTATE -> passed = checkRotate(session.getAnswer(), input);
+            case HUMAN -> {
+                rejectMessage = humanFailure(session, input);
+                passed = rejectMessage == null;
+            }
+            default -> passed = false;
+        }
 
         if (passed) {
             store.remove(session.getId());
@@ -224,7 +238,7 @@ public class CaptchaEngine {
             log.fine(() -> "captcha passed, type=" + session.getType().getCode());
             return VerifyResult.pass(ticket);
         }
-        return reject(session, null);
+        return reject(session, rejectMessage);
     }
 
     /** 业务侧消费 ticket（一次性）。 */
@@ -248,6 +262,10 @@ public class CaptchaEngine {
         config.put("clickWordCount", this.config.getClick().getWordCount());
         config.put("clickCharset", this.config.getClick().getCharset());
         config.put("rotateSize", this.config.getRotate().getSize());
+        config.put("humanDifficulty", ProofOfWork.clampDifficulty(this.config.getHuman().getDifficulty()));
+        config.put("humanDelayMinMs", this.config.getHuman().getDelayMinMs());
+        config.put("humanDelayMaxMs", this.config.getHuman().getDelayMaxMs());
+        config.put("humanMinMoves", this.config.getHuman().getMinMoves());
         config.put("store", store.type());
         config.put("background", backgrounds.describe());
         config.put("backgroundImages", backgrounds.externalImageCount());
@@ -348,6 +366,71 @@ public class CaptchaEngine {
     private double circularDiff(double a, double b) {
         double diff = Math.abs((a - b) % 360);
         return diff > 180 ? 360 - diff : diff;
+    }
+
+    /**
+     * 人机验证判定。返回 null 表示通过，否则返回给用户看的具体原因。
+     *
+     * <p>三道关，顺序即成本从高到低：</p>
+     * <ol>
+     *     <li>工作量证明：客户端必须提交一个让摘要前 N 位为 0 的 nonce，
+     *         且哈希里带本次 token —— 换题就不能复用，批量刷题要付 CPU；</li>
+     *     <li>最短耗时：服务端签发到提交的时间差，脚本再快也快不过这条线；</li>
+     *     <li>交互痕迹：指针 / 触摸 / 键盘至少发生过一次真实事件。</li>
+     * </ol>
+     */
+    private String humanFailure(CaptchaSession session, VerifyInput input) {
+        CaptchaAnswer.Human expected = session.getAnswer() == null ? null : session.getAnswer().human();
+        if (expected == null) {
+            return "验证数据异常，请刷新";
+        }
+        if (expected.difficulty() > 0) {
+            if (input.nonce() == null) {
+                return "缺少工作量证明";
+            }
+            if (!ProofOfWork.verify(session.getToken(), expected.salt(), input.nonce(), expected.difficulty())) {
+                return "工作量证明无效";
+            }
+        }
+        if (expected.minDurationMs() > 0) {
+            // 人机验证靠服务端计时兜底，所以没带耗时本身就算异常 —— 否则少传一个字段就能跳过这一关
+            if (input.duration() == null) {
+                return "缺少作答耗时";
+            }
+            // 关卡一：客户端上报的耗时（从拿到题目到提交）
+            if (input.duration() < expected.minDurationMs()) {
+                return "操作过快，请重试";
+            }
+            // 关卡二：服务端自己计的「签发 → 收到校验请求」耗时。
+            // 客户端上报值可以随便谎报，但这道线是服务器时钟量出来的：
+            // 脚本拿到题立刻提交，无论上报多少毫秒都过不去。
+            long issuedAt = session.getExpireAt() - config.getExpireSeconds() * 1000L;
+            long serverElapsed = System.currentTimeMillis() - issuedAt;
+            if (serverElapsed < expected.minDurationMs()) {
+                return "操作过快，请重试";
+            }
+        }
+        if (expected.requireTrace() && !hasInteraction(input.trace(), expected.minMoves())) {
+            return "未检测到有效的人机操作";
+        }
+        return null;
+    }
+
+    /**
+     * 是否存在真实交互痕迹。
+     *
+     * <p>这里刻意放宽：鼠标已经停在按钮上、用户直接点下去是完全正常的用法（此时
+     * 一次移动事件都没有）。所以「移动够多」或「有键盘输入」或「有指针按下」任一成立即通过。
+     * 它挡不住会跑浏览器的事件模拟，但能把「纯 HTTP 请求」这一类拦在门外，真正的门槛仍是 PoW。</p>
+     */
+    private boolean hasInteraction(HumanTrace trace, int minMoves) {
+        if (trace == null) {
+            return false;
+        }
+        if (trace.clicks() >= 1 || trace.keys() >= 1) {
+            return true;
+        }
+        return trace.moves() >= Math.max(1, minMoves);
     }
 
     /** 引擎构建器。 */

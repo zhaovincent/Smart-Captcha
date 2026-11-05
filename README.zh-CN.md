@@ -12,7 +12,7 @@
 
 | 模块 | 坐标 | 是什么 | 运行时依赖 |
 | --- | --- | --- | --- |
-| **① 内核** | `cn.localtool:smart-captcha-core` | 验证码引擎本体：三种生成器、Java2D 绘图、答案校验、一次性 ticket，`CaptchaStore` SPI + 内存实现 | **只要 JDK 17**，不依赖 Spring，无任何第三方 jar |
+| **① 内核** | `cn.localtool:smart-captcha-core` | 验证码引擎本体：四种生成器、Java2D 绘图、答案校验、一次性 ticket，`CaptchaStore` SPI + 内存实现 | **只要 JDK 17**，不依赖 Spring，无任何第三方 jar |
 | **② Starter** | `cn.localtool:smart-captcha-spring-boot-starter` | Spring Boot 3 自动装配：`smart-captcha.*` 配置、开箱可用的 `CaptchaEngine` Bean、按需开启的 `@RequireCaptcha` + 拦截器、Redis / Redisson 存储 | 内核 + `spring-boot-starter`；web / Spring Data Redis / Redisson 均为可选 |
 | **③ 服务** | `cn.localtool:smart-captcha-server` | 可直接启动的 Spring Boot 服务，提供下文全部 REST 接口（Vue 演示页连的就是它） | starter + web + data-redis + redisson |
 
@@ -22,7 +22,7 @@
 
 ## 特性
 
-- **三种验证方式**，同一个组件：`slider` 滑块拼图、`click` 文字点选、`rotate` 角度旋转。
+- **四种验证方式**，同一个组件：`slider` 滑块拼图、`click` 文字点选、`rotate` 角度旋转、`human` 一键人机验证。
 - **内联 / 弹窗两种呈现**：`display="inline"`（默认）在触发条下方就地展开；`display="popup"` 居中弹窗 + 遮罩，ESC 或点遮罩关闭。
 - **可固定可随机**：固定一种，或由服务端（`type=auto`）随机，或由组件按 `types` 池随机。
 - **背景图四种来源**：服务端程序化生成（零素材）、页面传入的外部图片数组，以及服务端任意混合配置——目录 / 单个文件 / 远程 URL / classpath 资源。
@@ -39,6 +39,9 @@
 | ![滑块拼图验证码](docs/images/captcha-slider.png) | ![文字点选验证码](docs/images/captcha-click.png) | ![角度旋转验证码](docs/images/captcha-rotate.png) |
 | 拖动滑块，把拼图块对准缺口 | 按提示顺序依次点击三个汉字 | 旋转圆盘，让缺口对准上方标记 |
 
+第四种 **一键人机验证**（`human`）没有图：面板里就是一个"我不是机器人"复选框，用户点一下即完成，
+摩擦最小；服务端靠工作量证明 + 最短耗时 + 交互痕迹来区分人与脚本，详见下文[一键人机验证](#一键人机验证human)。
+
 ---
 
 ## 目录结构
@@ -51,7 +54,7 @@ SmartCaptcha/                                   # 父 POM（Spring Boot 3.5.11 /
 │       ├── CaptchaConfig.java                  #   纯 POJO 配置（与 Spring 无关）
 │       ├── CaptchaType、CaptchaChallenge、CaptchaSession、CaptchaAnswer、
 │       │   VerifyInput、VerifyResult、Coordinate、CaptchaException
-│       ├── generator/                          #   滑块 / 点选 / 旋转三个生成器（SPI）
+│       ├── generator/                          #   滑块 / 点选 / 旋转 / 人机四个生成器（SPI）
 │       ├── store/                              #   CaptchaStore + MemoryCaptchaStore
 │       └── support/                            #   BackgroundFactory（Java2D 绘图）、图片工具
 ├── smart-captcha-spring-boot-starter/          # ② Spring Boot starter
@@ -69,7 +72,7 @@ SmartCaptcha/                                   # 父 POM（Spring Boot 3.5.11 /
     ├── public/backgrounds/                     # 示例外部背景图
     └── src/
         ├── components/BehaviorCaptcha.vue      # 纯 UI 组件
-        ├── components/captcha/*Stage.vue       # 三种交互子组件
+        ├── components/captcha/*Stage.vue       # 四种交互子组件（HumanStage 含 PoW Worker）
         ├── api/captcha.js                      # 示例 REST 封装（页面使用，组件不引用）
         └── App.vue                             # 演示页，接 @request / @verify
 ```
@@ -87,7 +90,7 @@ mvn clean install
 # 启动服务模块 → http://localhost:8088（依赖上面的 install，core/starter 从本地仓库解析）
 mvn -pl smart-captcha-server spring-boot:run
 #   或者直接跑 fat jar
-java -jar smart-captcha-server/target/smart-captcha-server-1.9.0.jar
+java -jar smart-captcha-server/target/smart-captcha-server-1.10.0.jar
 
 # 前端 → http://localhost:5173（vite 已代理 /api 到 127.0.0.1:8088）
 cd vue3
@@ -95,7 +98,7 @@ pnpm install
 pnpm dev
 ```
 
-演示页 URL 参数：`?demo=slider`、`?demo=click`、`?demo=rotate`，加 `&bg=ext` 使用外部背景图数组，加 `&theme=dark`（或 `light` / `auto`）强制主题。
+演示页 URL 参数：`?demo=slider`、`?demo=click`、`?demo=rotate`、`?demo=human`，加 `&bg=ext` 使用外部背景图数组，加 `&theme=dark`（或 `light` / `auto`）强制主题。
 后端起在别的地址时用 `CAPTCHA_API_TARGET=http://host:port pnpm dev`。
 
 ---
@@ -158,7 +161,7 @@ mvn clean install
 <dependency>
     <groupId>cn.localtool</groupId>
     <artifactId>smart-captcha-spring-boot-starter</artifactId>
-    <version>1.9.0</version>
+    <version>1.10.0</version>
 </dependency>
 ```
 
@@ -233,7 +236,7 @@ public class CaptchaAdvice {
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET | `/api/captcha/config` | 可用方式、画布尺寸、容错值、有效期 |
-| POST | `/api/captcha/generate` | Body `{"type":"slider\|click\|rotate\|auto","backgroundImage":"可选 dataURL","clickCharset":"可选 zh\|en"}` |
+| POST | `/api/captcha/generate` | Body `{"type":"slider\|click\|rotate\|human\|auto","backgroundImage":"可选 dataURL","clickCharset":"可选 zh\|en"}` |
 | GET | `/api/captcha/generate?type=auto` | 不传外部背景图时的简化调用 |
 | POST | `/api/captcha/verify` | 校验用户行为，通过时返回一次性 `ticket` |
 | POST | `/api/captcha/ticket/verify` | 业务侧消费 ticket（一次性），跨服务场景用 |
@@ -256,13 +259,15 @@ public class CaptchaAdvice {
     "slider": { "piece": "data:…", "pieceWidth": 65, "pieceHeight": 56, "y": 48 },
     "click":  { "words": ["验", "证", "码"], "charset": "zh" },
     "rotate": { "size": 200 },
+    "human":  { "algorithm": "SHA-256", "domain": "SC1", "salt": "3f9a…", "difficulty": 19, "minDurationMs": 300, "minMoves": 2, "requireTrace": true },
     "expireIn": 120,
     "tip": "拖动滑块，把拼图块对准缺口"
   }
 }
 ```
 
-答案（目标横坐标、文字中心点、目标角度）只存在于服务端。
+答案（目标横坐标、文字中心点、目标角度）只存在于服务端。`human` 字段只在 `type=human` 时出现，
+此时 `image` 为 `null`（人机验证不需要背景图）。
 
 ### 校验响应
 
@@ -292,7 +297,7 @@ async function handleRequest({ type }, done) {
 // 2) 页面决定怎么校验
 async function handleVerify(payload, done) {
   try {
-    done(await verifyCaptcha('', payload))      // payload: {id, token, type, duration, x|points|angle}
+    done(await verifyCaptcha('', payload))      // payload: {id, token, type, duration, x|points|angle|pow+trace}
   } catch (e) {
     done(null, e)
   }
@@ -302,7 +307,7 @@ async function handleVerify(payload, done) {
 <template>
   <BehaviorCaptcha
     type="auto"
-    :types="['slider', 'click', 'rotate']"
+    :types="['slider', 'click', 'rotate', 'human']"
     @request="handleRequest"
     @verify="handleVerify"
     @success="({ ticket }) => submitLogin(ticket)"
@@ -315,8 +320,8 @@ async function handleVerify(payload, done) {
 
 | 属性 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `type` | `String` | `'auto'` | `auto` \| `slider` \| `click` \| `rotate` |
-| `types` | `Array` | `['slider','click','rotate']` | `type="auto"` 时的随机池 |
+| `type` | `String` | `'auto'` | `auto` \| `slider` \| `click` \| `rotate` \| `human` |
+| `types` | `Array` | `['slider','click','rotate']` | `type="auto"` 时的随机池（要抽到人机验证需显式加 `'human'`） |
 | `display` | `String` | `'inline'` | `inline` 在触发条下方展开；`popup` 居中弹窗 + 遮罩 |
 | `theme` | `String` | `'auto'` | `auto` 跟随系统深浅色；`light` / `dark` 固定主题 |
 | `barText` | `String` | `'点击进行安全验证'` | 收起状态条上的文案 |
@@ -375,7 +380,31 @@ const { ticket } = captchaRef.value.getState()
 { "id": "…", "token": "…", "type": "slider", "duration": 1820, "x": 213.5 }
 { "id": "…", "token": "…", "type": "click",  "duration": 2400, "points": [{"x":80,"y":42},{"x":210,"y":120}] }
 { "id": "…", "token": "…", "type": "rotate", "duration": 1500, "angle": 96.5 }
+{ "id": "…", "token": "…", "type": "human",  "duration": 1300, "pow": {"nonce": 153425}, "trace": {"moves": 14, "clicks": 1, "keys": 0, "distance": 421, "straight": 0.73, "pointer": "mouse"} }
 ```
+
+### 一键人机验证（`human`）
+
+用户只点一个"我不是机器人"复选框。点一下就过的验证码，服务端靠三道关区分人与脚本：
+
+1. **工作量证明（PoW）** —— 生成时下发 `salt` 与难度 `difficulty`，前端必须找到一个 `nonce` 使
+   `SHA-256("SC1|<token>|<salt>|<nonce>")` 的前 19 个二进制位为 0（约 50 万次哈希，浏览器里 0.1~0.3 秒）。
+   token 参与哈希，所以解无法跨题复用；服务端验算只需一次哈希。**这是真正的成本门槛**：
+   批量刷题的成本从「一个 HTTP 请求」变成「一段 CPU 时间」。
+2. **随机等待时长（双计时校验）** —— 每张验证码在 `human.delay-min-ms` ~ `human.delay-max-ms`（默认 1000~3000）
+   里随机抽一个「要求等待时长」，前端点击后等满该时长加随机抖动才调校验接口；服务端做**两道计时**：
+   客户端上报的 `duration` 不得低于该值，且**服务端自己计的「签发 → 收到校验」耗时**也不得低于该值 ——
+   谎报耗时的脚本无论填多大都过不了服务器时钟这一关；没带 `duration` 同样算异常。
+3. **交互痕迹** —— 面板打开期间监听指针 / 触摸 / 键盘事件，汇总成 `trace` 上报。
+   有指针按下、键盘输入或指针移动任一即可（鼠标停在按钮上直接点是完全正常的用法，刻意放宽）；
+   一条交互事件都没有的纯 HTTP 请求会被拒绝。注意它是启发式信号，防不住会模拟浏览器事件的工具。
+4. **反自动化识别** —— 复选框在卡片内的排布位置每次加载随机（左 / 中 / 右 + 随机留白 + 品牌标随机隐藏），
+   且**所有 class 名每次挂载随机生成**（样式运行时注入），自动化脚本无法按固定选择器或固定坐标触发点击。
+
+面板打开时组件就会在 Web Worker 里**预计算** PoW，用户真正点击时通常零等待；Worker 不可用时自动退回主线程分片计算。
+
+配置与安全边界分析见 [`docs/captcha-verification-and-ticket.md`](docs/captcha-verification-and-ticket.md)。要点：
+`human` 是**低摩擦层**，适合防批量脚本，不防定向人工打码；对失败次数多的来源，业务侧应回退到 `slider` / `click`。
 
 ---
 
@@ -438,7 +467,7 @@ smart-captcha:
   expire-seconds: 120                 # 验证码有效期
   max-attempts: 3                     # 单张验证码允许的尝试次数
   ticket-expire-seconds: 300          # ticket 有效期
-  allow-types: [slider, click, rotate]
+  allow-types: [slider, click, rotate, human]
   width: 360                          # 画布尺寸
   height: 200
   min-duration-ms: 0                  # >0 时拒绝过快提交
@@ -448,6 +477,7 @@ smart-captcha:
   slider: { piece-size: 52, tolerance: 8 }
   click:  { word-count: 3, display-count: 5, tolerance: 22, font-size: 30, charset: zh, font-path: "", font-family: "" }
   rotate: { size: 200, tolerance: 8 }
+  human:  { difficulty: 19, delay-min-ms: 1000, delay-max-ms: 3000, min-moves: 2, require-trace: true }
   background:
     locations: []                     # 混合来源：目录 | 文件路径 | https URL | classpath:*
     dir: ""                           # 旧配置别名，自动并入 locations
@@ -513,7 +543,7 @@ public class MySliderGenerator implements CaptchaGenerator {
 }
 ```
 
-要加一种全新的交互（超出 滑块 / 点选 / 旋转），还需要在 `CaptchaType` 里加枚举值，并在 `CaptchaChallenge`、`VerifyInput` 里加对应字段——这两者就是与前端约定的线格式。
+要加一种全新的交互（超出 滑块 / 点选 / 旋转 / 人机），还需要在 `CaptchaType` 里加枚举值，并在 `CaptchaChallenge`、`VerifyInput` 里加对应字段——这两者就是与前端约定的线格式。不需要背景图的方式把 `requiresBackground()` 覆写为 `false`，引擎就会跳过背景生成（`background` 参数传 `null`）。
 
 **换存储** —— 实现 `CaptchaStore` 的 6 个方法并声明 Bean，`@ConditionalOnMissingBean` 会让它优先于所有内置实现。
 
@@ -601,11 +631,11 @@ mvn -pl smart-captcha-core test   # 只跑内核，完全不起 Spring 容器
 
 | 模块 | 用例数 | 覆盖内容 |
 | --- | --- | --- |
-| core | 59 | 三种方式的通过/失败、次数锁定、ticket 一次性、点选字符集（zh / en）、中文池 2000 常用字、点选干扰项（`display-count`，3 例）、自定义点选字体（Font 对象 / 字体文件路径与 classpath / 字体族，设置即用不校验，14 例）、`auto` 随机池、`min-duration-ms`、自定义生成器覆盖、内存存储契约（8 例）、背景图来源：目录 / 多文件 / 远程 URL / classpath 通配 / 重载 / 概率 / 失败降级（13 例） |
-| starter | 47 | 自动装配（默认内存、未知类型回退）、存储类型归一化、`smart-captcha.background.*` + `click.font-family` / `click.font-path` 绑定与引擎装配（6 例）、同一套 `CaptchaStore` 契约在 **redis** 与 **redisson** 上各 8 例、引擎跑在 Redis 上的完整链路（2 例）、拦截器改为抛 `CaptchaTicketException`（9 例）、无 advice 时仍返回 403（2 例）、拦截器开关：默认关闭 / 配置开启（6 例） |
-| server | 13 | REST 契约（config / generate / verify / 各种错误码）+ 4 个受保护业务接口的 MockMvc 用例（缺 ticket / 假 ticket / 重放 / 验证码接口本身不被拦）+ 2 个业务自校验用例 |
+| core | 77 | 四种方式的通过/失败、次数锁定、ticket 一次性、一键人机验证（PoW 验算 / 错误 nonce / 缺证明 / 跨题重放 / 最短耗时 / 缺 duration / 交互痕迹含纯键盘与触摸 / 轨迹校验开关，18 例）、点选字符集（zh / en）、中文池 2000 常用字、点选干扰项（`display-count`，3 例）、自定义点选字体（Font 对象 / 字体文件路径与 classpath / 字体族，设置即用不校验，14 例）、`auto` 随机池、`min-duration-ms`、自定义生成器覆盖、内存存储契约（8 例）、背景图来源：目录 / 多文件 / 远程 URL / classpath 通配 / 重载 / 概率 / 失败降级（13 例） |
+| starter | 47 | 自动装配（默认内存、未知类型回退、四种内置方式）、存储类型归一化、`smart-captcha.background.*` + `click.font-family` / `click.font-path` 绑定与引擎装配（6 例）、同一套 `CaptchaStore` 契约在 **redis** 与 **redisson** 上各 8 例、引擎跑在 Redis 上的完整链路（2 例）、拦截器改为抛 `CaptchaTicketException`（9 例）、无 advice 时仍返回 403（2 例）、拦截器开关：默认关闭 / 配置开启（6 例） |
+| server | 13 | REST 契约（config / generate / verify / 各种错误码，公告四种方式）+ 4 个受保护业务接口的 MockMvc 用例（缺 ticket / 假 ticket / 重放 / 验证码接口本身不被拦）+ 2 个业务自校验用例 |
 
-合计 119 个用例。其中 18 个依赖 Redis 的用例在连不上 Redis 时**自动跳过**；换地址用 `-Dtest.redis.host=… -Dtest.redis.port=…`（或环境变量 `REDIS_HOST` / `REDIS_PORT`）。
+合计 137 个用例。其中 18 个依赖 Redis 的用例在连不上 Redis 时**自动跳过**；换地址用 `-Dtest.redis.host=… -Dtest.redis.port=…`（或环境变量 `REDIS_HOST` / `REDIS_PORT`）。
 
 ---
 
@@ -613,8 +643,8 @@ mvn -pl smart-captcha-core test   # 只跑内核，完全不起 Spring 容器
 
 | 现象 | 原因 | 处理 |
 | --- | --- | --- |
-| IDEA 报 `Unresolved dependency: 'cn.localtool:smart-captcha-parent:jar:1.9.0'` | IDE 读到的是扁平化之前安装的 POM，或 IDE 使用的本地仓库与命令行安装的仓库不是同一个 | 在仓库根目录重新 `mvn clean install`，然后 IDEA 里 *Reload All Maven Projects*；核对 *Settings → Build Tools → Maven → Local repository*，用 `mvn -Dmaven.repo.local=<该路径> install` 装到同一个仓库 |
-| 报 `Dependency 'cn.localtool:smart-captcha-spring-boot-starter:1.9.0' not found` | 从未安装，或装到了另一个本地仓库 | 同上；并确认没有只执行 `mvn install -pl smart-captcha-spring-boot-starter`（缺父 POM 时加 `-am`） |
+| IDEA 报 `Unresolved dependency: 'cn.localtool:smart-captcha-parent:jar:1.10.0'` | IDE 读到的是扁平化之前安装的 POM，或 IDE 使用的本地仓库与命令行安装的仓库不是同一个 | 在仓库根目录重新 `mvn clean install`，然后 IDEA 里 *Reload All Maven Projects*；核对 *Settings → Build Tools → Maven → Local repository*，用 `mvn -Dmaven.repo.local=<该路径> install` 装到同一个仓库 |
+| 报 `Dependency 'cn.localtool:smart-captcha-spring-boot-starter:1.10.0' not found` | 从未安装，或装到了另一个本地仓库 | 同上；并确认没有只执行 `mvn install -pl smart-captcha-spring-boot-starter`（缺父 POM 时加 `-am`） |
 | 启动报 `NoClassDefFoundError: …CaptchaInterceptor`，或 Redis 存储不生效 | web、Spring Data Redis、Redisson 在 starter 里是 **optional** 依赖 | 在业务项目里显式引入实际用到的那几个 |
 
 ---

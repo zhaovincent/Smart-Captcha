@@ -3,9 +3,10 @@ import { computed, getCurrentInstance, nextTick, onBeforeUnmount, onMounted, ref
 import SliderStage from './captcha/SliderStage.vue'
 import ClickStage from './captcha/ClickStage.vue'
 import RotateStage from './captcha/RotateStage.vue'
+import HumanStage from './captcha/HumanStage.vue'
 
 /**
- * 行为验证码组件（滑块拼图 / 文字点选 / 角度旋转）。
+ * 行为验证码组件（滑块拼图 / 文字点选 / 角度旋转 / 一键人机验证）。
  *
  * 组件内不发起任何网络请求，全部通过外部事件完成：
  *  - @request(params, done)  需要一份验证码数据；done(challenge) 或 done(null, error)
@@ -18,7 +19,7 @@ import RotateStage from './captcha/RotateStage.vue'
  *  - reset()                    清空状态并收起面板
  */
 const props = defineProps({
-  /** auto | slider | click | rotate */
+  /** auto | slider | click | rotate | human */
   type: { type: String, default: 'auto' },
   /** type=auto 时的随机池 */
   types: { type: Array, default: () => ['slider', 'click', 'rotate'] },
@@ -51,7 +52,7 @@ const props = defineProps({
 
 const emit = defineEmits(['request', 'verify', 'success', 'fail', 'refresh', 'close'])
 
-const TYPE_LABELS = { slider: '滑块拼图', click: '文字点选', rotate: '角度旋转' }
+const TYPE_LABELS = { slider: '滑块拼图', click: '文字点选', rotate: '角度旋转', human: '人机验证' }
 
 const instance = getCurrentInstance()
 
@@ -77,6 +78,7 @@ const isPopup = computed(() => ['popup', 'modal', 'dialog', 'overlay'].includes(
 const stageComponent = computed(() => {
   if (activeType.value === 'slider') return SliderStage
   if (activeType.value === 'click') return ClickStage
+  if (activeType.value === 'human') return HumanStage
   return RotateStage
 })
 
@@ -287,8 +289,13 @@ function onRelease(payload) {
   }
 }
 
-function onClickComplete(points) {
-  submit({ points })
+function onClickComplete(payload) {
+  // 点选回调的是坐标数组；人机验证回调的是 { nonce, trace }
+  if (activeType.value === 'human') {
+    submit({ nonce: payload?.nonce ?? null, trace: payload?.trace ?? null })
+    return
+  }
+  submit({ points: payload })
 }
 
 function reset() {

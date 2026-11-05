@@ -29,11 +29,11 @@ class DefaultAutoConfigurationTests {
     }
 
     @Test
-    void engineShouldExposeThreeBuiltInTypes() {
+    void engineShouldExposeFourBuiltInTypes() {
         assertNotNull(engine);
         assertTrue(engine.supportedTypes().containsAll(
-                List.of(CaptchaType.SLIDER, CaptchaType.CLICK, CaptchaType.ROTATE)));
-        assertEquals(3, engine.supportedTypes().size());
+                List.of(CaptchaType.SLIDER, CaptchaType.CLICK, CaptchaType.ROTATE, CaptchaType.HUMAN)));
+        assertEquals(4, engine.supportedTypes().size());
         assertEquals("memory", engine.publicConfig().get("store"));
     }
 }

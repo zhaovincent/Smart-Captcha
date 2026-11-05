@@ -6,13 +6,13 @@
 
 ![SmartCaptcha — drop-in behavior captcha for Java (slider / click / rotate)](docs/images/banner-2x1-en.png)
 
-A complete behavior-captcha implementation: **Vue 3 component** (slider puzzle / click-the-words / rotate-the-disc) plus a **three-module Java backend** that renders the images, checks the answers and issues one-time tickets.
+A complete behavior-captcha implementation: **Vue 3 component** (slider puzzle / click-the-words / rotate-the-disc / one-click human check) plus a **three-module Java backend** that renders the images, checks the answers and issues one-time tickets.
 
 The backend is split so you can take only what you need:
 
 | Module | Artifact | What it is | Runtime dependencies |
 | --- | --- | --- | --- |
-| **1. Core** | `cn.localtool:smart-captcha-core` | The captcha engine itself: three generators, Java2D rendering, answer checking, one-time tickets, `CaptchaStore` SPI with an in-memory implementation. | **JDK 17 only** — no Spring, no third-party jars |
+| **1. Core** | `cn.localtool:smart-captcha-core` | The captcha engine itself: four generators, Java2D rendering, answer checking, one-time tickets, `CaptchaStore` SPI with an in-memory implementation. | **JDK 17 only** — no Spring, no third-party jars |
 | **2. Starter** | `cn.localtool:smart-captcha-spring-boot-starter` | Spring Boot 3 auto-configuration: `smart-captcha.*` properties, a ready `CaptchaEngine` bean, opt-in `@RequireCaptcha` + interceptor, Redis / Redisson stores. | core + `spring-boot-starter`; web / Spring Data Redis / Redisson are optional |
 | **3. Server** | `cn.localtool:smart-captcha-server` | A runnable Spring Boot service exposing the REST API documented below (this is what the Vue demo talks to). | starter + web + data-redis + redisson |
 
@@ -22,7 +22,7 @@ The Vue component is **UI-only** — it never calls an API by itself. It asks th
 
 ## Features
 
-- **Three captcha types** with a unified widget: `slider`, `click`, `rotate`.
+- **Four captcha types** with a unified widget: `slider`, `click`, `rotate`, `human` (one-click human check).
 - **Inline or popup panel** — `display="inline"` (default) expands right under the bar; `display="popup"` shows a centered modal with a mask (ESC / click-outside to close).
 - **Configurable or random** — pin one type, or let the server (`type=auto`) or the component (`types` pool) pick randomly.
 - **Backgrounds, four ways** — server-side procedural art (zero assets), an external image array supplied by the page, or server-side sources: a folder, individual files, remote URLs or classpath resources.
@@ -32,12 +32,14 @@ The Vue component is **UI-only** — it never calls an API by itself. It asks th
 
 ## Examples
 
-The three widgets, captured live from the demo page (backgrounds are generated procedurally by the backend — no image assets needed):
+The three image widgets, captured live from the demo page (backgrounds are generated procedurally by the backend — no image assets needed):
 
 | Slider puzzle | Click the words | Rotate the disc |
 | :---: | :---: | :---: |
 | ![Slider puzzle captcha](docs/images/captcha-slider.png) | ![Click-the-words captcha](docs/images/captcha-click.png) | ![Rotate-the-disc captcha](docs/images/captcha-rotate.png) |
 | Drag the handle to align the piece with the gap | Click the three characters in the given order | Rotate the disc until the notch points at the marker |
+
+The fourth type, **human** (one-click human check), has no image at all: the panel shows a single "I'm not a robot" checkbox and one click completes it. The server tells humans from scripts with a proof-of-work + minimum-duration + interaction-evidence check — see [One-click human check](#one-click-human-check-human) below.
 
 ---
 
@@ -51,9 +53,9 @@ SmartCaptcha/                                   # parent POM (Spring Boot 3.5.11
 │       ├── CaptchaConfig.java                  #   plain POJO config (no Spring)
 │       ├── CaptchaType, CaptchaChallenge, CaptchaSession, CaptchaAnswer,
 │       │   VerifyInput, VerifyResult, Coordinate, CaptchaException
-│       ├── generator/                          #   slider / click / rotate (SPI)
+│       ├── generator/                          #   slider / click / rotate / human (SPI)
 │       ├── store/                              #   CaptchaStore + MemoryCaptchaStore
-│       └── support/                            #   BackgroundFactory (Java2D), image utils
+│       └── support/                            #   BackgroundFactory (Java2D), ProofOfWork, image utils
 ├── smart-captcha-spring-boot-starter/          # ② Spring Boot starter
 │   └── src/main/java/cn/localtool/smartcaptcha/spring/
 │       ├── SmartCaptchaProperties.java         #   extends CaptchaConfig, binds smart-captcha.*
@@ -69,7 +71,9 @@ SmartCaptcha/                                   # parent POM (Spring Boot 3.5.11
     ├── public/backgrounds/                     # sample external background images
     └── src/
         ├── components/BehaviorCaptcha.vue     # UI-only widget
-        ├── components/captcha/*Stage.vue      # slider / click / rotate interaction
+        ├── components/captcha/*Stage.vue      # slider / click / rotate / human interaction
+        ├── workers/pow.worker.js              # proof-of-work Web Worker (used by HumanStage)
+        ├── utils/sha256.js                    # pure-JS SHA-256 for the PoW loop
         ├── api/captcha.js                     # demo REST helpers (used by the page, NOT by the widget)
         └── App.vue                            # demo page wiring @request / @verify
 ```
@@ -87,7 +91,7 @@ mvn clean install
 # run the server module → http://localhost:8088  (needs the install above, it resolves core/starter locally)
 mvn -pl smart-captcha-server spring-boot:run
 #   …or run the fat jar
-java -jar smart-captcha-server/target/smart-captcha-server-1.9.0.jar
+java -jar smart-captcha-server/target/smart-captcha-server-1.10.0.jar
 
 # frontend → http://localhost:5173  (vite proxies /api to 127.0.0.1:8088)
 cd vue3
@@ -95,7 +99,7 @@ pnpm install
 pnpm dev
 ```
 
-Handy demo URLs: `?demo=slider`, `?demo=click`, `?demo=rotate`, plus `&bg=ext` to use the external background array and `&theme=dark` (or `light` / `auto`) to force a theme.
+Handy demo URLs: `?demo=slider`, `?demo=click`, `?demo=rotate`, `?demo=human`, plus `&bg=ext` to use the external background array and `&theme=dark` (or `light` / `auto`) to force a theme.
 Point the dev server somewhere else with `CAPTCHA_API_TARGET=http://host:port pnpm dev`.
 
 ---
@@ -158,7 +162,7 @@ The POMs written to the local repository are **flattened** by `flatten-maven-plu
 <dependency>
     <groupId>cn.localtool</groupId>
     <artifactId>smart-captcha-spring-boot-starter</artifactId>
-    <version>1.9.0</version>
+    <version>1.10.0</version>
 </dependency>
 ```
 
@@ -233,7 +237,7 @@ The server module is the reference implementation: it wires the starter, exposes
 | Method | Path | Description |
 | --- | --- | --- |
 | GET | `/api/captcha/config` | Available types, canvas size, tolerances, TTL |
-| POST | `/api/captcha/generate` | Body `{"type":"slider\|click\|rotate\|auto","backgroundImage":"optional dataURL","clickCharset":"optional zh\|en"}` |
+| POST | `/api/captcha/generate` | Body `{"type":"slider\|click\|rotate\|human\|auto","backgroundImage":"optional dataURL","clickCharset":"optional zh\|en"}` |
 | GET | `/api/captcha/generate?type=auto` | Simplification without external background |
 | POST | `/api/captcha/verify` | Verify behavior, returns a one-time `ticket` on success |
 | POST | `/api/captcha/ticket/verify` | Business API consumes the ticket (single use) — for cross-service use |
@@ -256,13 +260,14 @@ Note that `code: 0` on `/verify` only means "request handled" — check `data.su
     "slider": { "piece": "data:…", "pieceWidth": 65, "pieceHeight": 56, "y": 48 },
     "click":  { "words": ["验", "证", "码"], "charset": "zh" },
     "rotate": { "size": 200 },
+    "human":  { "algorithm": "SHA-256", "domain": "SC1", "salt": "3f9a…", "difficulty": 19, "minDurationMs": 300, "minMoves": 2, "requireTrace": true },
     "expireIn": 120,
     "tip": "拖动滑块，把拼图块对准缺口"
   }
 }
 ```
 
-Answers (target x, word centers, target angle) are stored server-side only.
+Answers (target x, word centers, target angle) are stored server-side only. The `human` object appears only for `type=human`, where `image` is `null` (no background is generated).
 
 ### Verify response
 
@@ -292,7 +297,7 @@ async function handleRequest({ type }, done) {
 // 2) the page decides how to verify
 async function handleVerify(payload, done) {
   try {
-    done(await verifyCaptcha('', payload))      // payload: {id, token, type, duration, x|points|angle}
+    done(await verifyCaptcha('', payload))      // payload: {id, token, type, duration, x|points|angle|pow+trace}
   } catch (e) {
     done(null, e)
   }
@@ -302,7 +307,7 @@ async function handleVerify(payload, done) {
 <template>
   <BehaviorCaptcha
     type="auto"
-    :types="['slider', 'click', 'rotate']"
+    :types="['slider', 'click', 'rotate', 'human']"
     @request="handleRequest"
     @verify="handleVerify"
     @success="({ ticket }) => submitLogin(ticket)"
@@ -315,8 +320,8 @@ async function handleVerify(payload, done) {
 
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
-| `type` | `String` | `'auto'` | `auto` \| `slider` \| `click` \| `rotate` |
-| `types` | `Array` | `['slider','click','rotate']` | Random pool used when `type="auto"` |
+| `type` | `String` | `'auto'` | `auto` \| `slider` \| `click` \| `rotate` \| `human` |
+| `types` | `Array` | `['slider','click','rotate']` | Random pool used when `type="auto"` (add `'human'` explicitly to include the human check) |
 | `display` | `String` | `'inline'` | `inline` expands under the bar; `popup` renders a centered modal with mask |
 | `theme` | `String` | `'auto'` | `auto` follows the system color scheme; `light` / `dark` force a fixed theme |
 | `barText` | `String` | `'点击进行安全验证'` | Text on the collapsed bar |
@@ -375,7 +380,21 @@ const { ticket } = captchaRef.value.getState()
 { "id": "…", "token": "…", "type": "slider", "duration": 1820, "x": 213.5 }
 { "id": "…", "token": "…", "type": "click",  "duration": 2400, "points": [{"x":80,"y":42},{"x":210,"y":120}] }
 { "id": "…", "token": "…", "type": "rotate", "duration": 1500, "angle": 96.5 }
+{ "id": "…", "token": "…", "type": "human",  "duration": 1300, "pow": {"nonce": 153425}, "trace": {"moves": 14, "clicks": 1, "keys": 0, "distance": 421, "straight": 0.73, "pointer": "mouse"} }
 ```
+
+### One-click human check (`human`)
+
+The user clicks a single "I'm not a robot" checkbox. Since a click costs nothing by itself, the server separates humans from scripts with three gates:
+
+1. **Proof of work** — the challenge ships a `salt` and a `difficulty`; the client must find a `nonce` such that `SHA-256("SC1|<token>|<salt>|<nonce>")` starts with 19 zero bits (about 500k hashes, ~0.1–0.3 s in a browser). The token is part of the hash, so a solution cannot be reused for another challenge, and the server verifies it with a single hash. **This is the real cost gate**: bulk abuse becomes a CPU problem instead of an HTTP problem.
+2. **Randomized wait (dual-clock check)** — every challenge draws a random "required wait" from `human.delay-min-ms` ~ `human.delay-max-ms` (default 1000–3000); the widget waits that long plus jitter after the click before calling verify. The server checks **two clocks**: the client-reported `duration` must reach the value, and the **server-measured time between issuing the challenge and receiving the verify call** must too — a script that spoofs `duration` still fails against the server's own clock; a missing `duration` is rejected as well.
+3. **Interaction evidence** — while the panel is open the widget listens to pointer / touch / keyboard events and reports them as `trace`. Any real pointer press, keystroke or pointer movement passes (a cursor already resting on the button that just clicks is perfectly normal, so this is intentionally lenient); a bare HTTP request with zero interaction events is rejected. Note this is a heuristic — it stops naive scripts, not browser automation.
+4. **Anti-automation by obscurity** — the checkbox's position inside the card is re-randomized on every load (left / middle / right + random padding + randomly hidden brand), and **all class names are regenerated per mount** (styles injected at runtime), so automation cannot target a fixed selector or coordinate.
+
+The widget starts computing the PoW in a **Web Worker as soon as the panel opens**, so the actual click usually resolves instantly; if Workers are unavailable it falls back to chunked computation on the main thread.
+
+Config and a security-boundary analysis live in [`docs/captcha-verification-and-ticket.md`](docs/captcha-verification-and-ticket.md). The short version: `human` is a **low-friction tier** — good against bulk scripts, not against targeted human solvers; for sources that keep failing, fall back to `slider` / `click`.
 
 ---
 
@@ -438,7 +457,7 @@ smart-captcha:
   expire-seconds: 120                 # challenge TTL
   max-attempts: 3                     # attempts per challenge
   ticket-expire-seconds: 300          # ticket TTL
-  allow-types: [slider, click, rotate]
+  allow-types: [slider, click, rotate, human]
   width: 360                          # canvas size
   height: 200
   min-duration-ms: 0                  # >0 rejects suspiciously fast submissions
@@ -448,6 +467,7 @@ smart-captcha:
   slider: { piece-size: 52, tolerance: 8 }
   click:  { word-count: 3, display-count: 5, tolerance: 22, font-size: 30, charset: zh, font-path: "", font-family: "" }
   rotate: { size: 200, tolerance: 8 }
+  human:  { difficulty: 19, delay-min-ms: 1000, delay-max-ms: 3000, min-moves: 2, require-trace: true }
   background:
     locations: []                     # mixed sources: folder | file path | https URL | classpath:*
     dir: ""                           # legacy alias, merged into locations
@@ -513,7 +533,7 @@ public class MySliderGenerator implements CaptchaGenerator {
 }
 ```
 
-A brand-new interaction style (beyond slider / click / rotate) also needs a value in `CaptchaType` plus its own field in `CaptchaChallenge`/`VerifyInput`, since both are the wire contract with the widget.
+A brand-new interaction style (beyond slider / click / rotate / human) also needs a value in `CaptchaType` plus its own field in `CaptchaChallenge`/`VerifyInput`, since both are the wire contract with the widget. A style that needs no image can override `requiresBackground()` to return `false` — the engine then skips background generation entirely (`background` arrives as `null`).
 
 **New storage** — implement the six methods of `CaptchaStore` and declare the bean; `@ConditionalOnMissingBean` makes it win over every built-in store.
 
@@ -583,6 +603,7 @@ No validation is performed and no font is recommended: once an external font is 
 - Answers live in `CaptchaStore` (memory by default, or Redis/Redisson when configured) and are never serialized into responses.
 - `id + token` pair; a wrong token is treated as expired, so ids cannot be probed.
 - Attempt limit per challenge, single-use challenge, single-use ticket.
+- The `human` type adds a proof-of-work gate (configurable `difficulty`, default 19 ≈ 500k hashes per attempt) plus minimum-duration and interaction-evidence checks — see [One-click human check](#one-click-human-check-human). It is a friction tier, not a substitute for `slider`/`click` on high-risk actions.
 - Business endpoints must be guarded server-side: `@RequireCaptcha` (or `engine.consumeTicket`) — the ticket alone is not proof of anything until a server consumes it.
 - You can enable `min-duration-ms` to reject instant submissions from scripts.
 - For production: set `smart-captcha.store.type=redis` (or `redisson`) behind a shared Redis, and add per-IP rate limiting.
@@ -601,11 +622,11 @@ mvn -pl smart-captcha-core test   # engine only, no Spring context at all
 
 | Module | Cases | Covers |
 | --- | --- | --- |
-| core | 59 | three types (pass + fail), attempt lockout, ticket single-use, click charset (zh / en), CJK pool of 2000 common characters, click distractors (`display-count`, 3), custom click font (Font object / font file by path & classpath / family, used as-is without validation, 14), `auto` type pool, `min-duration-ms`, custom generator override, memory-store contract (8), background sources: folder / file list / remote URL / classpath wildcard / reload / ratio / fallback (13) |
-| starter | 47 | auto-configuration (default memory, unknown type fallback), store-type normalisation, `smart-captcha.background.*` + `click.font-family` / `click.font-path` binding + engine wiring (6), the same `CaptchaStore` contract on **redis** and **redisson** (8 each), engine-over-Redis flow (2), interceptor throwing `CaptchaTicketException` instead of writing a body (9), 403 mapping without any advice (2), interceptor switch: off by default / on by config (6) |
-| server | 13 | REST contract (config / generate / verify / error codes), 4 MockMvc cases for the guarded business endpoint (missing / bogus / replayed ticket, captcha API stays open) and 2 for the self-check endpoint |
+| core | 77 | four types (pass + fail), attempt lockout, ticket single-use, one-click human check: PoW verify / wrong nonce / missing proof / replay across challenges / minimum duration / missing duration / interaction evidence (incl. keyboard-only and touch) / trace-check toggle (18), click charset (zh / en), CJK pool of 2000 common characters, click distractors (`display-count`, 3), custom click font (Font object / font file by path & classpath / family, used as-is without validation, 14), `auto` type pool, `min-duration-ms`, custom generator override, memory-store contract (8), background sources: folder / file list / remote URL / classpath wildcard / reload / ratio / fallback (13) |
+| starter | 47 | auto-configuration (default memory, unknown type fallback, four built-in types), store-type normalisation, `smart-captcha.background.*` + `click.font-family` / `click.font-path` binding + engine wiring (6), the same `CaptchaStore` contract on **redis** and **redisson** (8 each), engine-over-Redis flow (2), interceptor throwing `CaptchaTicketException` instead of writing a body (9), 403 mapping without any advice (2), interceptor switch: off by default / on by config (6) |
+| server | 13 | REST contract (config / generate / verify / error codes, four types advertised), 4 MockMvc cases for the guarded business endpoint (missing / bogus / replayed ticket, captcha API stays open) and 2 for the self-check endpoint |
 
-Total: 119 cases. The 18 Redis-backed cases **skip automatically** when no server is reachable; point them elsewhere with `-Dtest.redis.host=… -Dtest.redis.port=…` (or `REDIS_HOST` / `REDIS_PORT`).
+Total: 137 cases. The 18 Redis-backed cases **skip automatically** when no server is reachable; point them elsewhere with `-Dtest.redis.host=… -Dtest.redis.port=…` (or `REDIS_HOST` / `REDIS_PORT`).
 
 ---
 
@@ -613,8 +634,8 @@ Total: 119 cases. The 18 Redis-backed cases **skip automatically** when no serve
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| `Unresolved dependency: 'cn.localtool:smart-captcha-parent:jar:1.9.0'` in IntelliJ | the IDE picked up a POM installed **before** the POMs were flattened, or its local repository differs from the one the CLI installs into | `mvn clean install` at the repo root, then *Reload All Maven Projects*; verify IDEA → *Settings → Build Tools → Maven → Local repository* and install into exactly that path: `mvn -Dmaven.repo.local=<that path> install` |
-| `Dependency 'cn.localtool:smart-captcha-spring-boot-starter:1.9.0' not found` | never installed, or installed into another local repository | same as above; also make sure you did not run `mvn install -pl smart-captcha-spring-boot-starter` without `-am` |
+| `Unresolved dependency: 'cn.localtool:smart-captcha-parent:jar:1.10.0'` in IntelliJ | the IDE picked up a POM installed **before** the POMs were flattened, or its local repository differs from the one the CLI installs into | `mvn clean install` at the repo root, then *Reload All Maven Projects*; verify IDEA → *Settings → Build Tools → Maven → Local repository* and install into exactly that path: `mvn -Dmaven.repo.local=<that path> install` |
+| `Dependency 'cn.localtool:smart-captcha-spring-boot-starter:1.10.0' not found` | never installed, or installed into another local repository | same as above; also make sure you did not run `mvn install -pl smart-captcha-spring-boot-starter` without `-am` |
 | `NoClassDefFoundError: …CaptchaInterceptor` / Redis store missing | `spring-boot-starter-web`, `spring-boot-starter-data-redis` and `redisson` are **optional** dependencies of the starter | add the ones you actually use to your own project |
 
 ---

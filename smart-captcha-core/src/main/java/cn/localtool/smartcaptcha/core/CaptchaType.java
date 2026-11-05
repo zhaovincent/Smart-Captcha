@@ -15,7 +15,12 @@ public enum CaptchaType {
     /** 文字点选。 */
     CLICK("click"),
     /** 角度旋转。 */
-    ROTATE("rotate");
+    ROTATE("rotate"),
+    /**
+     * 一键人机验证：用户只点一下，服务端靠「工作量证明 + 行为证据 + 时序」判定。
+     * 摩擦最小，适合作为第一层防护；高风险场景应对失败次数多的来源回退到滑块 / 点选。
+     */
+    HUMAN("human");
 
     private final String code;
 

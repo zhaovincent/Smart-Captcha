@@ -47,6 +47,7 @@ public class CaptchaConfig {
     private Slider slider = new Slider();
     private Click click = new Click();
     private Rotate rotate = new Rotate();
+    private Human human = new Human();
     private Background background = new Background();
 
     /** 画布宽度，带下限保护。 */
@@ -145,6 +146,14 @@ public class CaptchaConfig {
 
     public void setRotate(Rotate rotate) {
         this.rotate = rotate;
+    }
+
+    public Human getHuman() {
+        return human;
+    }
+
+    public void setHuman(Human human) {
+        this.human = human;
     }
 
     public Background getBackground() {
@@ -303,9 +312,87 @@ public class CaptchaConfig {
         }
     }
 
-    /** 背景图来源配置。 */
-    public static class Background {
+    /**
+     * 一键人机验证参数。
+     *
+     * <p>用户只点一下按钮，扣掉"人"与"脚本"差价的是这三件事：</p>
+     * <ol>
+     *     <li>{@link #difficulty 工作量证明} —— 每次挑战都要客户端算 {@code 2^difficulty} 次哈希，
+     *         批量请求的成本从「一次 HTTP」变成「一段 CPU」；</li>
+     *     <li>{@link #delayMinMs 随机等待时长} —— 每张验证码随机要求等待 1~3 秒，
+     *         服务端按「客户端上报 + 服务端自计」双计时校验，脚本反应再快也快不过它；</li>
+     *     <li>{@link #requireTrace 行为证据} —— 有没有真实的指针 / 触摸 / 键盘活动。</li>
+     * </ol>
+     *
+     * <p>注意：轨迹类信号可被伪造，只用来筛掉最粗糙的脚本。需要更强保证时，
+     * 请对失败次数多的来源回退到 {@code slider} / {@code click}。</p>
+     */
+    public static class Human {
         /**
+         * 工作量证明难度（前导 0 的二进制位）。默认 19，约 50 万次哈希，
+         * 桌面浏览器约 0.1~0.3 秒、低端手机 0.5 秒上下；0 表示关闭 PoW（不推荐）。
+         */
+        private int difficulty = 19;
+
+        /**
+         * 点击后要求等待时长的下限（毫秒）。每张验证码会在
+         * {@code [delayMinMs, delayMaxMs]} 里随机抽一个值作为本次的要求耗时，
+         * 客户端须等待该时长后才调用校验接口，服务端也按同一值判定。
+         */
+        private int delayMinMs = 1000;
+
+        /** 点击后要求等待时长的上限（毫秒）。 */
+        private int delayMaxMs = 3000;
+
+        /** 期望的最少指针采样数；触摸点击与键盘操作会自动放宽。 */
+        private int minMoves = 2;
+
+        /** 是否要求存在真实交互痕迹（关闭后只看 PoW 与耗时）。 */
+        private boolean requireTrace = true;
+
+        public int getDifficulty() {
+            return difficulty;
+        }
+
+        public void setDifficulty(int difficulty) {
+            this.difficulty = difficulty;
+        }
+
+        public int getDelayMinMs() {
+            return delayMinMs;
+        }
+
+        public void setDelayMinMs(int delayMinMs) {
+            this.delayMinMs = Math.max(0, delayMinMs);
+        }
+
+        public int getDelayMaxMs() {
+            return delayMaxMs;
+        }
+
+        public void setDelayMaxMs(int delayMaxMs) {
+            this.delayMaxMs = Math.max(0, delayMaxMs);
+        }
+
+        public int getMinMoves() {
+            return minMoves;
+        }
+
+        public void setMinMoves(int minMoves) {
+            this.minMoves = minMoves;
+        }
+
+        public boolean isRequireTrace() {
+            return requireTrace;
+        }
+
+        public void setRequireTrace(boolean requireTrace) {
+            this.requireTrace = requireTrace;
+        }
+    }
+
+    /** 背景图来源配置。 */
+    public static class Background {        /**
          * 本地图片目录（兼容旧配置，等价于往 {@link #locations} 里加一条目录）。
          *
          * @deprecated 建议直接用 {@link #locations}，可以混合配置目录 / 文件 / URL

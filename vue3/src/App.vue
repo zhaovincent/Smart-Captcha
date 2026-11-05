@@ -9,6 +9,7 @@ const modeOptions = [
   { value: 'slider', label: '滑块拼图' },
   { value: 'click', label: '文字点选' },
   { value: 'rotate', label: '角度旋转' },
+  { value: 'human', label: '人机验证' },
 ]
 
 /** 面板展示方式：inline 内联（默认） / popup 弹窗 */
@@ -80,14 +81,14 @@ function queryState() {
   )
 }
 
-// 支持 ?demo=slider|click|rotate&bg=ext&display=popup 直接展开面板，方便联调与自动化测试
+// 支持 ?demo=slider|click|rotate|human&bg=ext&display=popup 直接展开面板，方便联调与自动化测试
 // 注意要在 setup 顶层同步读取，保证子组件首次渲染就能拿到 default-open
 const autoOpen = ref(false)
 {
   const q = new URLSearchParams(window.location.search)
   const demo = q.get('demo')
   if (demo) {
-    mode.value = ['slider', 'click', 'rotate'].includes(demo) ? demo : 'auto'
+    mode.value = ['slider', 'click', 'rotate', 'human'].includes(demo) ? demo : 'auto'
     useExternalBg.value = q.get('bg') === 'ext'
     displayMode.value = q.get('display') === 'popup' ? 'popup' : 'inline'
     autoOpen.value = true
@@ -238,7 +239,7 @@ function resetCaptcha() {
         </div>
       </div>
       <p>
-        Vue 3 组件 + Spring Boot 3 服务端。支持滑块拼图 / 文字点选 / 角度旋转三种验证方式，
+        Vue 3 组件 + Spring Boot 3 服务端。支持滑块拼图 / 文字点选 / 角度旋转 / 一键人机验证四种方式，
         可固定一种、可配置随机；背景图支持服务端程序化自动生成，也可外部传入图片数组。
         同时适配 PC 与手机 H5（指针事件 + 响应式布局）。
       </p>
@@ -261,7 +262,7 @@ function resetCaptcha() {
           <BehaviorCaptcha
             ref="captchaRef"
             :type="mode"
-            :types="['slider', 'click', 'rotate']"
+            :types="['slider', 'click', 'rotate', 'human']"
             :display="displayMode"
             :theme="theme"
             bar-text="点击进行安全验证"
@@ -390,7 +391,7 @@ function resetCaptcha() {
           <tr>
             <td class="method"><code class="m-post">POST</code></td>
             <td><code>/api/captcha/generate</code></td>
-            <td>生成验证码。body：<code>{ "type": "slider|click|rotate|auto", "backgroundImage": "可选 dataURL", "clickCharset": "可选 zh|en" }</code></td>
+            <td>生成验证码。body：<code>{ "type": "slider|click|rotate|human|auto", "backgroundImage": "可选 dataURL", "clickCharset": "可选 zh|en" }</code></td>
           </tr>
           <tr>
             <td class="method"><code class="m-get">GET</code></td>
@@ -400,7 +401,7 @@ function resetCaptcha() {
           <tr>
             <td class="method"><code class="m-post">POST</code></td>
             <td><code>/api/captcha/verify</code></td>
-            <td>校验。滑块传 <code>{x, duration}</code>，点选传 <code>{points:[{x,y}]}</code>，旋转传 <code>{angle}</code>；通过返回一次性 ticket</td>
+            <td>校验。滑块传 <code>{x, duration}</code>，点选传 <code>{points:[{x,y}]}</code>，旋转传 <code>{angle}</code>，人机验证传 <code>{pow:{nonce}, trace:{...}}</code>；通过返回一次性 ticket</td>
           </tr>
           <tr>
             <td class="method"><code class="m-post">POST</code></td>
@@ -444,7 +445,7 @@ function resetCaptcha() {
           <tr>
             <td><code>types</code></td>
             <td><code>Array</code> · <code>['slider','click','rotate']</code></td>
-            <td><code>type=auto</code> 时的随机池</td>
+            <td><code>type=auto</code> 时的随机池（要抽到人机验证需显式加 <code>'human'</code>）</td>
           </tr>
           <tr>
             <td><code>display</code></td>

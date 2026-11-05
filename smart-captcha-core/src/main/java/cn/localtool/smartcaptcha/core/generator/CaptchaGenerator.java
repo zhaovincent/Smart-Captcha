@@ -24,7 +24,15 @@ public interface CaptchaGenerator {
     CaptchaType type();
 
     /**
-     * @param background 已按配置尺寸裁剪好的背景图
+     * 是否需要背景图。返回 false 时引擎不会生成背景（{@code background} 传 null），
+     * 适合"不靠图像出题"的方式，例如人机验证。
+     */
+    default boolean requiresBackground() {
+        return true;
+    }
+
+    /**
+     * @param background 已按配置尺寸裁剪好的背景图（{@link #requiresBackground()} 为 false 时为 null）
      * @param config     全局配置
      * @param random     随机源
      */

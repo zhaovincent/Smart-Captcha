@@ -26,11 +26,11 @@ class CaptchaApiTests {
     private ObjectMapper objectMapper;
 
     @Test
-    void configShouldListThreeTypes() throws Exception {
+    void configShouldListFourTypes() throws Exception {
         mockMvc.perform(get("/api/captcha/config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.types.length()").value(3))
+                .andExpect(jsonPath("$.data.types.length()").value(4))
                 .andExpect(jsonPath("$.data.store").value("memory"))
                 .andExpect(jsonPath("$.data.expireIn").value(120));
     }
