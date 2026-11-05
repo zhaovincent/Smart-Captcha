@@ -4,7 +4,7 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-![SmartCaptcha — drop-in behavior captcha for Java (slider / click / rotate)](docs/images/banner-2x1-en.png)
+![SmartCaptcha — drop-in behavior captcha for Java (slider / click / rotate / human check)](docs/images/banner-2x1-en.png)
 
 A complete behavior-captcha implementation: **Vue 3 component** (slider puzzle / click-the-words / rotate-the-disc / one-click human check) plus a **three-module Java backend** that renders the images, checks the answers and issues one-time tickets.
 
@@ -27,19 +27,24 @@ The Vue component is **UI-only** — it never calls an API by itself. It asks th
 - **Configurable or random** — pin one type, or let the server (`type=auto`) or the component (`types` pool) pick randomly.
 - **Backgrounds, four ways** — server-side procedural art (zero assets), an external image array supplied by the page, or server-side sources: a folder, individual files, remote URLs or classpath resources.
 - **PC + mobile H5** — Pointer Events for mouse/touch parity, percentage-based layout, no fixed pixel math, responsive panel.
+- **Light / dark / auto theme** — `theme` follows the system color scheme by default or pins `light` / `dark`; every color is a `--bc-*` CSS variable, so brand theming is one override away.
 - **Server-side answers** — correct position/angle never leaves the backend; `id + token` pair, 3 attempts max, one-time ticket after success.
 - **Pluggable on both ends** — add a captcha type by implementing `CaptchaGenerator`, change the session storage by implementing `CaptchaStore` (six methods).
 
 ## Examples
 
-The three image widgets, captured live from the demo page (backgrounds are generated procedurally by the backend — no image assets needed):
+All four widget types, captured live from the demo page (image backgrounds are generated procedurally by the backend — no image assets needed):
 
-| Slider puzzle | Click the words | Rotate the disc |
-| :---: | :---: | :---: |
-| ![Slider puzzle captcha](docs/images/captcha-slider.png) | ![Click-the-words captcha](docs/images/captcha-click.png) | ![Rotate-the-disc captcha](docs/images/captcha-rotate.png) |
-| Drag the handle to align the piece with the gap | Click the three characters in the given order | Rotate the disc until the notch points at the marker |
+| Slider puzzle | Click the words |
+| :---: | :---: |
+| ![Slider puzzle captcha](docs/images/captcha-slider.png) | ![Click-the-words captcha](docs/images/captcha-click.png) |
+| Drag the handle to align the piece with the gap | Click the three characters in the given order |
+| ![Rotate-the-disc captcha](docs/images/captcha-rotate.png) | ![One-click human check](docs/images/captcha-human.png) |
+| Rotate the disc until the notch points at the marker | One click on the checkbox — the server separates humans from scripts with proof-of-work + randomized wait + interaction evidence (see [One-click human check](#one-click-human-check-human)) |
 
-The fourth type, **human** (one-click human check), has no image at all: the panel shows a single "I'm not a robot" checkbox and one click completes it. The server tells humans from scripts with a proof-of-work + minimum-duration + interaction-evidence check — see [One-click human check](#one-click-human-check-human) below.
+Dark mode, forced with `theme="dark"` (`auto` follows the system, `light` pins light):
+
+![Dark mode](docs/images/captcha-dark.png)
 
 ---
 
@@ -91,7 +96,7 @@ mvn clean install
 # run the server module → http://localhost:8088  (needs the install above, it resolves core/starter locally)
 mvn -pl smart-captcha-server spring-boot:run
 #   …or run the fat jar
-java -jar smart-captcha-server/target/smart-captcha-server-1.10.0.jar
+java -jar smart-captcha-server/target/smart-captcha-server-1.11.0.jar
 
 # frontend → http://localhost:5173  (vite proxies /api to 127.0.0.1:8088)
 cd vue3
@@ -162,7 +167,7 @@ The POMs written to the local repository are **flattened** by `flatten-maven-plu
 <dependency>
     <groupId>cn.localtool</groupId>
     <artifactId>smart-captcha-spring-boot-starter</artifactId>
-    <version>1.10.0</version>
+    <version>1.11.0</version>
 </dependency>
 ```
 
@@ -622,11 +627,11 @@ mvn -pl smart-captcha-core test   # engine only, no Spring context at all
 
 | Module | Cases | Covers |
 | --- | --- | --- |
-| core | 77 | four types (pass + fail), attempt lockout, ticket single-use, one-click human check: PoW verify / wrong nonce / missing proof / replay across challenges / minimum duration / missing duration / interaction evidence (incl. keyboard-only and touch) / trace-check toggle (18), click charset (zh / en), CJK pool of 2000 common characters, click distractors (`display-count`, 3), custom click font (Font object / font file by path & classpath / family, used as-is without validation, 14), `auto` type pool, `min-duration-ms`, custom generator override, memory-store contract (8), background sources: folder / file list / remote URL / classpath wildcard / reload / ratio / fallback (13) |
+| core | 79 | four types (pass + fail), attempt lockout, ticket single-use, one-click human check: PoW verify / wrong nonce / missing proof / replay across challenges / minimum duration / missing duration / interaction evidence (incl. keyboard-only and touch) / trace-check toggle (18), click charset (zh / en), CJK pool of 2000 common characters, click distractors (`display-count`, 3), custom click font (Font object / font file by path & classpath / family, used as-is without validation, 14), `auto` type pool, `min-duration-ms`, custom generator override, memory-store contract (8), background sources: folder / file list / remote URL / classpath wildcard / reload / ratio / fallback (13) |
 | starter | 47 | auto-configuration (default memory, unknown type fallback, four built-in types), store-type normalisation, `smart-captcha.background.*` + `click.font-family` / `click.font-path` binding + engine wiring (6), the same `CaptchaStore` contract on **redis** and **redisson** (8 each), engine-over-Redis flow (2), interceptor throwing `CaptchaTicketException` instead of writing a body (9), 403 mapping without any advice (2), interceptor switch: off by default / on by config (6) |
 | server | 13 | REST contract (config / generate / verify / error codes, four types advertised), 4 MockMvc cases for the guarded business endpoint (missing / bogus / replayed ticket, captcha API stays open) and 2 for the self-check endpoint |
 
-Total: 137 cases. The 18 Redis-backed cases **skip automatically** when no server is reachable; point them elsewhere with `-Dtest.redis.host=… -Dtest.redis.port=…` (or `REDIS_HOST` / `REDIS_PORT`).
+Total: 139 cases. The 18 Redis-backed cases **skip automatically** when no server is reachable; point them elsewhere with `-Dtest.redis.host=… -Dtest.redis.port=…` (or `REDIS_HOST` / `REDIS_PORT`).
 
 ---
 
@@ -634,8 +639,8 @@ Total: 137 cases. The 18 Redis-backed cases **skip automatically** when no serve
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| `Unresolved dependency: 'cn.localtool:smart-captcha-parent:jar:1.10.0'` in IntelliJ | the IDE picked up a POM installed **before** the POMs were flattened, or its local repository differs from the one the CLI installs into | `mvn clean install` at the repo root, then *Reload All Maven Projects*; verify IDEA → *Settings → Build Tools → Maven → Local repository* and install into exactly that path: `mvn -Dmaven.repo.local=<that path> install` |
-| `Dependency 'cn.localtool:smart-captcha-spring-boot-starter:1.10.0' not found` | never installed, or installed into another local repository | same as above; also make sure you did not run `mvn install -pl smart-captcha-spring-boot-starter` without `-am` |
+| `Unresolved dependency: 'cn.localtool:smart-captcha-parent:jar:1.11.0'` in IntelliJ | the IDE picked up a POM installed **before** the POMs were flattened, or its local repository differs from the one the CLI installs into | `mvn clean install` at the repo root, then *Reload All Maven Projects*; verify IDEA → *Settings → Build Tools → Maven → Local repository* and install into exactly that path: `mvn -Dmaven.repo.local=<that path> install` |
+| `Dependency 'cn.localtool:smart-captcha-spring-boot-starter:1.11.0' not found` | never installed, or installed into another local repository | same as above; also make sure you did not run `mvn install -pl smart-captcha-spring-boot-starter` without `-am` |
 | `NoClassDefFoundError: …CaptchaInterceptor` / Redis store missing | `spring-boot-starter-web`, `spring-boot-starter-data-redis` and `redisson` are **optional** dependencies of the starter | add the ones you actually use to your own project |
 
 ---
