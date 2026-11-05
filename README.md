@@ -75,11 +75,13 @@ SmartCaptcha/                                   # parent POM (Spring Boot 3.5.11
 └── vue3/
     ├── public/backgrounds/                     # sample external background images
     └── src/
-        ├── components/BehaviorCaptcha.vue     # UI-only widget
-        ├── components/captcha/*Stage.vue      # slider / click / rotate / human interaction
-        ├── workers/pow.worker.js              # proof-of-work Web Worker (used by HumanStage)
-        ├── utils/sha256.js                    # pure-JS SHA-256 for the PoW loop
-        ├── api/captcha.js                     # demo REST helpers (used by the page, NOT by the widget)
+        ├── components/                         # ← self-contained: copy this folder to reuse the widget
+        │   ├── BehaviorCaptcha.vue             # UI-only widget (sole external dep: vue)
+        │   └── captcha/
+        │       ├── *Stage.vue                  # slider / click / rotate / human interaction
+        │       ├── workers/pow.worker.js       # proof-of-work Web Worker (used by HumanStage)
+        │       └── utils/sha256.js             # pure-JS SHA-256 for the PoW loop
+        ├── api/captcha.js                      # demo REST helpers (used by the page, NOT by the widget)
         └── App.vue                            # demo page wiring @request / @verify
 ```
 
@@ -284,6 +286,8 @@ Answers (target x, word centers, target angle) are stored server-side only. The 
 ---
 
 ## Frontend component
+
+The widget is **self-contained** under `src/components/` — `BehaviorCaptcha.vue` plus the `captcha/` folder (four stages, the PoW worker, the SHA-256 util). To reuse it in another Vue 3 + Vite project, copy the whole `components/` folder and import `BehaviorCaptcha.vue`; the only external dependency is `vue` itself (the worker uses Vite's `?worker` import).
 
 ```vue
 <script setup>

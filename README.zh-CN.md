@@ -75,8 +75,12 @@ SmartCaptcha/                                   # 父 POM（Spring Boot 3.5.11 /
 └── vue3/
     ├── public/backgrounds/                     # 示例外部背景图
     └── src/
-        ├── components/BehaviorCaptcha.vue      # 纯 UI 组件
-        ├── components/captcha/*Stage.vue       # 四种交互子组件（HumanStage 含 PoW Worker）
+        ├── components/                         # ← 组件自包含：复用时整个目录拷走即可
+        │   ├── BehaviorCaptcha.vue             # 纯 UI 组件（唯一外部依赖：vue）
+        │   └── captcha/
+        │       ├── *Stage.vue                  # 四种交互子组件
+        │       ├── workers/pow.worker.js       # 工作量证明 Web Worker（HumanStage 使用）
+        │       └── utils/sha256.js             # 纯 JS SHA-256 实现（PoW 循环用）
         ├── api/captcha.js                      # 示例 REST 封装（页面使用，组件不引用）
         └── App.vue                             # 演示页，接 @request / @verify
 ```
@@ -283,6 +287,8 @@ public class CaptchaAdvice {
 ---
 
 ## 前端组件
+
+组件在 `src/components/` 下**自包含**——`BehaviorCaptcha.vue` + `captcha/` 目录（四个 Stage、PoW Worker、SHA-256 工具）。要在其它 Vue 3 + Vite 项目里复用，把整个 `components/` 目录拷过去并 `import BehaviorCaptcha.vue` 即可；唯一外部依赖是 `vue`（Worker 使用 Vite 的 `?worker` 导入）。
 
 ```vue
 <script setup>

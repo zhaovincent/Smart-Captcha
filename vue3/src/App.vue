@@ -126,6 +126,7 @@ async function handleRequest({ type }, done) {
 
 /** 组件 @verify：提交用户行为给端上校验 */
 function handleVerify(payload, done) {
+console.log(payload,'----');
   verifyCaptcha('', payload).then(done).catch((e) => {
     log(`校验请求异常：${e.message}`, 'err')
     done(null, e)

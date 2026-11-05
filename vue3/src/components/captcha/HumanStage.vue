@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import PowWorker from '../../workers/pow.worker.js?worker'
-import { createHasher } from '../../utils/sha256.js'
+import PowWorker from './workers/pow.worker.js?worker'
+import { createHasher } from './utils/sha256.js'
 
 /**
  * 一键人机验证。
